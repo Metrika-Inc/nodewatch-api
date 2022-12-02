@@ -78,10 +78,11 @@ func Load(path string) (*Configuration, error) {
 	if err != nil {
 		return nil, err
 	}
-	cfg.Resolver.APIKey, err = loadResolverAPIKey()
-	if err != nil {
-		return nil, err
-	}
+
+	// cfg.Resolver.APIKey, err = loadResolverAPIKey()
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	return cfg, nil
 }

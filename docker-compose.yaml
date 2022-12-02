@@ -35,6 +35,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    extra_hosts:
+      - host.docker.internal:host-gateway
     env_file:
       - .env
     environment:

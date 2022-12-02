@@ -14,7 +14,7 @@ import (
 	"eth2-crawler/crawler"
 	"eth2-crawler/graph"
 	"eth2-crawler/graph/generated"
-	"eth2-crawler/resolver/ipdata"
+	"eth2-crawler/resolver/ipmapper"
 	peerStore "eth2-crawler/store/peerstore/mongo"
 	recordStore "eth2-crawler/store/record/mongo"
 	"eth2-crawler/utils/config"
@@ -43,7 +43,9 @@ func main() {
 		log.Fatalf("error Initializing the record store: %s", err.Error())
 	}
 
-	resolverService, err := ipdata.New(cfg.Resolver.APIKey, time.Duration(cfg.Resolver.Timeout)*time.Second)
+	// resolverService, err := ipdata.New(cfg.Resolver.APIKey, time.Duration(cfg.Resolver.Timeout)*time.Second)
+	resolverService := ipmapper.New()
+
 	if err != nil {
 		log.Fatalf("error Initializing the ip resolver: %s", err.Error())
 	}
