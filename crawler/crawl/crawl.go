@@ -22,6 +22,12 @@ import (
 	"github.com/ethereum/go-ethereum/p2p/enode"
 )
 
+var (
+	MainnetPhase0ForkDigest    = "0xb5303f2a"
+	MainnetAltairForkDigest    = "0xafcaaba0"
+	MainnetBellatrixForkDigest = "0x4a26c58b"
+)
+
 type crawler struct {
 	disc            resolver
 	peerStore       peerstore.Provider
@@ -97,17 +103,19 @@ func (c *crawler) storePeer(ctx context.Context, node *enode.Node) {
 	if err != nil { // not eth2 nodes
 		return
 	}
-	log.Debug("found a eth2 node", log.Ctx{"node": node})
 
-	// get basic info
-	peer, err := models.NewPeer(node, eth2Data)
-	if err != nil {
-		return
-	}
-	// save to db if not exists
-	err = c.peerStore.Create(ctx, peer)
-	if err != nil {
-		log.Error("err inserting peer", log.Ctx{"err": err, "peer": peer.String()})
+	if eth2Data.ForkDigest.String() == MainnetBellatrixForkDigest {
+		log.Debug("found a eth2 node (bellatrix)", log.Ctx{"node": node})
+		// get basic info
+		peer, err := models.NewPeer(node, eth2Data)
+		if err != nil {
+			return
+		}
+		// save to db if not exists
+		err = c.peerStore.Create(ctx, peer)
+		if err != nil {
+			log.Error("err inserting peer", log.Ctx{"err": err, "peer": peer.String()})
+		}
 	}
 }
 

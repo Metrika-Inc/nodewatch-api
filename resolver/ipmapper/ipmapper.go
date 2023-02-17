@@ -2,9 +2,6 @@ package ipmapper
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
 
 	"eth2-crawler/models"
@@ -31,40 +28,41 @@ func New() resolver.Provider {
 }
 
 func (c *client) GetGeoLocation(ctx context.Context, ipAddr string) (*models.GeoLocation, error) {
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
+	// req, err := http.NewRequest("GET", url, nil)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	q := req.URL.Query()
-	q.Add("ipaddress", ipAddr)
-	req.URL.RawQuery = q.Encode()
+	// q := req.URL.Query()
+	// q.Add("ipaddress", ipAddr)
+	// req.URL.RawQuery = q.Encode()
 
-	res, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
+	// res, err := c.httpClient.Do(req)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	// nolint
-	defer res.Body.Close()
-	resBody, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nil, fmt.Errorf("unable to read response body")
-	}
+	// // nolint
+	// defer res.Body.Close()
+	// resBody, err := io.ReadAll(res.Body)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("unable to read response body")
+	// }
 
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("invalid status code returned. statusCode::%d response::%s", res.StatusCode, string(resBody))
-	}
+	// if res.StatusCode != http.StatusOK {
+	// 	return nil, fmt.Errorf("invalid status code returned. statusCode::%d response::%s", res.StatusCode, string(resBody))
+	// }
 
-	result := &geoInformation{}
-	err = json.Unmarshal(resBody, result)
-	if err != nil {
-		return nil, fmt.Errorf("unable to unmarshal body. error::%w", err)
-	}
+	// result := &geoInformation{}
+	// err = json.Unmarshal(resBody, result)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("unable to unmarshal body. error::%w", err)
+	// }
 
-	geoLoc := &models.GeoLocation{
-		Country: result.Country,
-	}
+	// geoLoc := &models.GeoLocation{
+	// 	Country: result.Country,
+	// }
 
-	return geoLoc, nil
+	// return geoLoc, nil
+	return &models.GeoLocation{}, nil
 }

@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 
 	"eth2-crawler/crawler"
 	"eth2-crawler/graph"
