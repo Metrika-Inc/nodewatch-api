@@ -235,8 +235,6 @@ func (c *crawler) collectNodeInfoRetryer(ctx context.Context, peer *models.Peer)
 			log.Info("exiting node retryer, context done")
 			return false
 		case <-time.After(time.Second * 5):
-
-			time.Sleep(time.Second * 5)
 			count++
 
 			err = c.host.Connect(ctx, *peer.GetPeerInfo())
