@@ -86,6 +86,9 @@ func main() {
 
 	// Block until terminate called
 	<-exit
+	fmt.Println("=====================================")
+	fmt.Println("Got termination signal, cancelling context abd shutting down")
+	fmt.Println("=====================================")
 
 	// Cancelled the context
 	cancel()

@@ -228,7 +228,7 @@ func (c *crawler) collectNodeInfoRetryer(ctx context.Context, peer *models.Peer)
 	count := 0
 	var err error
 	var ag, pv string
-	for count < 20 {
+	for count < 12 {
 
 		select {
 		case <-ctx.Done():
