@@ -21,7 +21,7 @@ type Configuration struct {
 }
 
 type FileOutput struct {
-	Path string `yaml:"port,omitempty"`
+	Path string `yaml:"path,omitempty"`
 }
 
 // Server holds data necessary for server configuration
