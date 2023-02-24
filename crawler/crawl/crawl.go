@@ -6,7 +6,6 @@ package crawl
 import (
 	"context"
 	"crypto/ecdsa"
-	"encoding/json"
 	"eth2-crawler/crawler/p2p"
 	reqresp "eth2-crawler/crawler/rpc/request"
 	"eth2-crawler/crawler/util"
@@ -204,10 +203,8 @@ func (c *crawler) updatePeerInfo(ctx context.Context, peer *models.Peer) {
 			c.updateGeolocation(ctx, peer)
 		}
 
-		peerOutput, _ := json.Marshal(peer)
-
 		// TODO: Can we do anything here if this is blocking?
-		c.fileOutput.WorkChan() <- peerOutput
+		c.fileOutput.WorkChan() <- peer
 
 	} else {
 		peer.Score--
