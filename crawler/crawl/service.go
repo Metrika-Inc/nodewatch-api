@@ -7,10 +7,12 @@ package crawl
 import (
 	"context"
 	"crypto/ecdsa"
+	"eth2-crawler/output"
 	"eth2-crawler/store/peerstore"
 	"eth2-crawler/store/record"
 	"fmt"
 	"net"
+	"sync"
 
 	"github.com/robfig/cron/v3"
 
@@ -35,8 +37,7 @@ type listenConfig struct {
 }
 
 // Initialize initializes the core crawler component
-func Initialize(peerStore peerstore.Provider, historyStore record.Provider, ipResolver ipResolver.Provider, bootNodeAddrs []string) error {
-	ctx := context.Background()
+func Initialize(ctx context.Context, wg *sync.WaitGroup, peerStore peerstore.Provider, historyStore record.Provider, ipResolver ipResolver.Provider, bootNodeAddrs []string, fileOutput *output.FileOutput) error {
 	pkey, _ := crypto.GenerateKey()
 	listenCfg := &listenConfig{
 		bootNodeAddrs: bootNodeAddrs,
@@ -66,10 +67,16 @@ func Initialize(peerStore peerstore.Provider, historyStore record.Provider, ipRe
 		return err
 	}
 
-	c := newCrawler(disc, peerStore, historyStore, ipResolver, listenCfg.privateKey, disc.RandomNodes(), host, 200)
+	c := newCrawler(disc, peerStore, historyStore, ipResolver, listenCfg.privateKey, disc.RandomNodes(), host, 200, fileOutput)
 	go c.start(ctx)
+
 	// scheduler for updating peer
-	go c.updatePeer(ctx)
+	wg.Add(1)
+	go c.updatePeer(ctx, wg)
+
+	// Start file output
+	wg.Add(1)
+	go c.fileOutput.Start(ctx, wg)
 
 	// add scheduler for updating history store
 	scheduler := cron.New()

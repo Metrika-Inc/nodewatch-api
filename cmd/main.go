@@ -9,10 +9,15 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 
 	"eth2-crawler/crawler"
 	"eth2-crawler/graph"
 	"eth2-crawler/graph/generated"
+	"eth2-crawler/output"
 	"eth2-crawler/resolver/ipmapper"
 	peerStore "eth2-crawler/store/peerstore/mongo"
 	recordStore "eth2-crawler/store/record/mongo"
@@ -24,6 +29,16 @@ import (
 )
 
 func main() {
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		exit := make(chan os.Signal, 1)
+		signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
+		cancel()
+	}()
+
+	var wg sync.WaitGroup
 	cfgPath := flag.String("p", "./cmd/config/config.dev.yaml", "The configuration path")
 	flag.Parse()
 
@@ -45,12 +60,19 @@ func main() {
 	// resolverService, err := ipdata.New(cfg.Resolver.APIKey, time.Duration(cfg.Resolver.Timeout)*time.Second)
 	resolverService := ipmapper.New()
 
+	// if err != nil {
+	// 	log.Fatalf("error Initializing the ip resolver: %s", err.Error())
+	// }
+
+	// TODO: This shouldn't be hard coded, should match the concurrency level
+	fOutputChan := make(chan interface{}, 500)
+	fOutput, err := output.New(cfg.FileOutput.Path, fOutputChan)
 	if err != nil {
-		log.Fatalf("error Initializing the ip resolver: %s", err.Error())
+		log.Fatalf("error Initializing the file output: %s", err.Error())
 	}
 
 	// TODO collect config from a config files or from command args and pass to Start()
-	go crawler.Start(peerStore, historyStore, resolverService)
+	go crawler.Start(ctx, &wg, peerStore, historyStore, resolverService, fOutput)
 
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: graph.NewResolver(peerStore, historyStore)}))
 
@@ -64,4 +86,6 @@ func main() {
 	})
 
 	server.Start(context.TODO(), cfg.Server, router)
+
+	wg.Wait()
 }

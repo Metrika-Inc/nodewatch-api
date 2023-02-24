@@ -5,10 +5,13 @@
 package crawler
 
 import (
+	"context"
 	"eth2-crawler/crawler/crawl"
+	"eth2-crawler/output"
 	ipResolver "eth2-crawler/resolver"
 	"eth2-crawler/store/peerstore"
 	"eth2-crawler/store/record"
+	"sync"
 
 	"github.com/ethereum/go-ethereum/log"
 
@@ -16,7 +19,7 @@ import (
 )
 
 // Start starts the crawler service
-func Start(peerStore peerstore.Provider, historyStore record.Provider, ipResolver ipResolver.Provider) {
+func Start(ctx context.Context, wg *sync.WaitGroup, peerStore peerstore.Provider, historyStore record.Provider, ipResolver ipResolver.Provider, fileOutput *output.FileOutput) {
 	h := log.CallerFileHandler(log.StdoutHandler)
 	log.Root().SetHandler(h)
 
@@ -25,7 +28,7 @@ func Start(peerStore peerstore.Provider, historyStore record.Provider, ipResolve
 	)
 	log.Root().SetHandler(handler)
 
-	err := crawl.Initialize(peerStore, historyStore, ipResolver, params.V5Bootnodes)
+	err := crawl.Initialize(ctx, wg, peerStore, historyStore, ipResolver, params.V5Bootnodes, fileOutput)
 	if err != nil {
 		panic(err)
 	}

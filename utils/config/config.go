@@ -14,9 +14,14 @@ import (
 
 // Configuration holds data necessary for configuring application
 type Configuration struct {
-	Server   *Server   `yaml:"server,omitempty"`
-	Database *Database `yaml:"database,omitempty"`
-	Resolver *Resolver `yaml:"resolver,omitempty"`
+	Server     *Server     `yaml:"server,omitempty"`
+	Database   *Database   `yaml:"database,omitempty"`
+	Resolver   *Resolver   `yaml:"resolver,omitempty"`
+	FileOutput *FileOutput `yaml:"fileOutput,omitempty"`
+}
+
+type FileOutput struct {
+	Path string `yaml:"port,omitempty"`
 }
 
 // Server holds data necessary for server configuration
