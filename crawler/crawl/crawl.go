@@ -6,6 +6,7 @@ package crawl
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/json"
 	"eth2-crawler/crawler/p2p"
 	reqresp "eth2-crawler/crawler/rpc/request"
 	"eth2-crawler/crawler/util"
@@ -202,6 +203,12 @@ func (c *crawler) updatePeerInfo(ctx context.Context, peer *models.Peer) {
 		if peer.GeoLocation == nil {
 			c.updateGeolocation(ctx, peer)
 		}
+
+		peerOutput, _ := json.Marshal(peer)
+
+		// TODO: Can we do anything here if this is blocking?
+		c.fileOutput.WorkChan() <- peerOutput
+
 	} else {
 		peer.Score--
 	}
@@ -229,6 +236,7 @@ func (c *crawler) collectNodeInfoRetryer(ctx context.Context, peer *models.Peer)
 		select {
 		case <-ctx.Done():
 			log.Info("exiting node retryer, context done")
+			return false
 		case <-time.After(time.Second * 5):
 
 			time.Sleep(time.Second * 5)

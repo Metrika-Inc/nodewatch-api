@@ -32,11 +32,8 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	go func() {
-		exit := make(chan os.Signal, 1)
-		signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
-		cancel()
-	}()
+	exit := make(chan os.Signal, 1)
+	signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
 
 	var wg sync.WaitGroup
 	cfgPath := flag.String("p", "./cmd/config/config.dev.yaml", "The configuration path")
@@ -85,7 +82,14 @@ func main() {
 		fmt.Fprintf(w, "{ \"status\": \"up\" }")
 	})
 
-	server.Start(context.TODO(), cfg.Server, router)
+	server.Start(ctx, cfg.Server, router)
 
+	// Block until terminate called
+	<-exit
+
+	// Cancelled the context
+	cancel()
+
+	// Wait on wg to finish
 	wg.Wait()
 }
