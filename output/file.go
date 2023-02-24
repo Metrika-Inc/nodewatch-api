@@ -16,7 +16,7 @@ type FileOutput struct {
 }
 
 func New(path string, workChan chan interface{}) (*FileOutput, error) {
-	file, err := os.Create(path)
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, err
 	}
