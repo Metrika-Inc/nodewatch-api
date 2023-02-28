@@ -161,6 +161,11 @@ type Peer struct {
 	LastUpdated   int64 `json:"last_updated" bson:"last_updated"`
 }
 
+type PeerOutput struct {
+	ProcessedTimestamp time.Time `json:"processed_timestamp" bson:"processed_timestamp"`
+	Peer
+}
+
 // NewPeer initializes new peer
 func NewPeer(node *enode.Node, eth2Data *common.Eth2Data) (*Peer, error) {
 	pk := ic.PubKey((*ic.Secp256k1PublicKey)(node.Pubkey()))

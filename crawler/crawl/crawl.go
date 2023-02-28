@@ -204,7 +204,7 @@ func (c *crawler) updatePeerInfo(ctx context.Context, peer *models.Peer) {
 		}
 
 		// TODO: Can we do anything here if this is blocking?
-		c.fileOutput.WorkChan() <- peer
+		c.fileOutput.WorkChan() <- models.PeerOutput{ProcessedTimestamp: time.Now().UTC(), Peer: *peer}
 
 	} else {
 		peer.Score--
