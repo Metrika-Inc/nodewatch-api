@@ -33,7 +33,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	exit := make(chan os.Signal, 1)
-	signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(exit, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 
 	var wg sync.WaitGroup
 	cfgPath := flag.String("p", "./cmd/config/config.dev.yaml", "The configuration path")
