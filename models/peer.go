@@ -162,6 +162,7 @@ type Peer struct {
 }
 
 type PeerOutput struct {
+	UUID               string    `json:"uuid" bson:"uuid"`
 	ProcessedTimestamp time.Time `json:"processed_timestamp" bson:"processed_timestamp"`
 	Peer
 }

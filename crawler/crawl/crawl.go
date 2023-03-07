@@ -6,6 +6,8 @@ package crawl
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/sha256"
+	"encoding/binary"
 	"eth2-crawler/crawler/p2p"
 	reqresp "eth2-crawler/crawler/rpc/request"
 	"eth2-crawler/crawler/util"
@@ -15,6 +17,7 @@ import (
 	ipResolver "eth2-crawler/resolver"
 	"eth2-crawler/store/peerstore"
 	"eth2-crawler/store/record"
+	"fmt"
 	"sync"
 	"time"
 
@@ -203,9 +206,16 @@ func (c *crawler) updatePeerInfo(ctx context.Context, peer *models.Peer) {
 			c.updateGeolocation(ctx, peer)
 		}
 
-		// TODO: Can we do anything here if this is blocking?
-		c.fileOutput.WorkChan() <- models.PeerOutput{ProcessedTimestamp: time.Now().UTC(), Peer: *peer}
+		h := sha256.New()
+		h.Write([]byte(peer.ID))
 
+		lastUpdateBytes := make([]byte, 8)
+		binary.LittleEndian.PutUint64(lastUpdateBytes, uint64(peer.LastUpdated))
+		h.Write(lastUpdateBytes)
+		uuid := fmt.Sprintf("%x", h.Sum(nil))
+
+		// TODO: Can we do anything here if this is blocking?
+		c.fileOutput.WorkChan() <- models.PeerOutput{UUID: uuid, ProcessedTimestamp: time.Now().UTC(), Peer: *peer}
 	} else {
 		peer.Score--
 	}
