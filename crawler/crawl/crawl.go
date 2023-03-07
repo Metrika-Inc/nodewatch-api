@@ -8,6 +8,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"eth2-crawler/crawler/p2p"
 	reqresp "eth2-crawler/crawler/rpc/request"
 	"eth2-crawler/crawler/util"
@@ -22,16 +23,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/protolambda/zrnt/eth2/beacon"
 	"github.com/protolambda/zrnt/eth2/beacon/common"
+	"github.com/protolambda/zrnt/eth2/configs"
+	"github.com/protolambda/ztyp/tree"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/enode"
-)
-
-var (
-	MainnetPhase0ForkDigest    = "0xb5303f2a"
-	MainnetAltairForkDigest    = "0xafcaaba0"
-	MainnetBellatrixForkDigest = "0x4a26c58b"
 )
 
 type crawler struct {
@@ -45,9 +43,8 @@ type crawler struct {
 	privateKey    *ecdsa.PrivateKey
 	host          p2p.Host
 	jobs          chan *models.Peer
-	// jobsConcurrency int
-	fileOutput *output.FileOutput
-	// decoder    *beacon.ForkDecoder
+	fileOutput    *output.FileOutput
+	decoder       *beacon.ForkDecoder
 }
 
 // resolver holds methods of discovery v5
@@ -59,20 +56,26 @@ type resolver interface {
 func newCrawler(config *config.Crawler, disc resolver, peerStore peerstore.Provider, historyStore record.Provider,
 	ipResolver ipResolver.Provider, privateKey *ecdsa.PrivateKey, iter enode.Iterator,
 	host p2p.Host, fileOutput *output.FileOutput) *crawler {
+	root, err := hex.DecodeString(config.GenesisValidatorsRoot)
+	if err != nil {
+		log.Error("failed to decode genesis validator root", log.Ctx{"err": err})
+		panic(100)
+	}
+	var treeRoot tree.Root
+	copy(treeRoot[:], root)
 	c := &crawler{
-		disc:         disc,
-		peerStore:    peerStore,
-		historyStore: historyStore,
-		ipResolver:   ipResolver,
-		privateKey:   privateKey,
-		iter:         iter,
-		nodeCh:       make(chan *enode.Node),
-		host:         host,
-		jobs:         make(chan *models.Peer, config.Concurrency),
-		// jobsConcurrency: jobConcurrency,
+		disc:          disc,
+		peerStore:     peerStore,
+		historyStore:  historyStore,
+		ipResolver:    ipResolver,
+		privateKey:    privateKey,
+		iter:          iter,
+		nodeCh:        make(chan *enode.Node),
+		host:          host,
+		jobs:          make(chan *models.Peer, config.Concurrency),
 		fileOutput:    fileOutput,
 		crawlerConfig: config,
-		// decoder:       beacon.NewForkDecoder(&common.Main, nil),
+		decoder:       beacon.NewForkDecoder(configs.Mainnet, treeRoot),
 	}
 	return c
 }
@@ -116,8 +119,8 @@ func (c *crawler) storePeer(ctx context.Context, node *enode.Node) {
 		return
 	}
 
-	if eth2Data.ForkDigest.String() == MainnetBellatrixForkDigest {
-		log.Debug("found a eth2 node (bellatrix)", log.Ctx{"node": node})
+	if eth2Data.ForkDigest == c.decoder.Bellatrix || eth2Data.ForkDigest == c.decoder.Capella {
+		log.Debug("found a eth2 node", log.Ctx{"node": node})
 		// get basic info
 		peer, err := models.NewPeer(node, eth2Data)
 		if err != nil {
