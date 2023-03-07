@@ -17,3 +17,6 @@ database:
 
 resolver:
   request_timeout_sec: 3
+
+fileOutput:
+  path: "./crawler.out"

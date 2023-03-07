@@ -6,20 +6,31 @@ package crawl
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/sha256"
+	"encoding/binary"
 	"eth2-crawler/crawler/p2p"
 	reqresp "eth2-crawler/crawler/rpc/request"
 	"eth2-crawler/crawler/util"
 	"eth2-crawler/graph/model"
 	"eth2-crawler/models"
+	"eth2-crawler/output"
 	ipResolver "eth2-crawler/resolver"
 	"eth2-crawler/store/peerstore"
 	"eth2-crawler/store/record"
+	"fmt"
+	"sync"
 	"time"
 
 	"github.com/protolambda/zrnt/eth2/beacon/common"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/enode"
+)
+
+var (
+	MainnetPhase0ForkDigest    = "0xb5303f2a"
+	MainnetAltairForkDigest    = "0xafcaaba0"
+	MainnetBellatrixForkDigest = "0x4a26c58b"
 )
 
 type crawler struct {
@@ -33,6 +44,7 @@ type crawler struct {
 	host            p2p.Host
 	jobs            chan *models.Peer
 	jobsConcurrency int
+	fileOutput      *output.FileOutput
 }
 
 // resolver holds methods of discovery v5
@@ -43,7 +55,7 @@ type resolver interface {
 // newCrawler inits new crawler service
 func newCrawler(disc resolver, peerStore peerstore.Provider, historyStore record.Provider,
 	ipResolver ipResolver.Provider, privateKey *ecdsa.PrivateKey, iter enode.Iterator,
-	host p2p.Host, jobConcurrency int) *crawler {
+	host p2p.Host, jobConcurrency int, fileOutput *output.FileOutput) *crawler {
 	c := &crawler{
 		disc:            disc,
 		peerStore:       peerStore,
@@ -55,6 +67,7 @@ func newCrawler(disc resolver, peerStore peerstore.Provider, historyStore record
 		host:            host,
 		jobs:            make(chan *models.Peer, jobConcurrency),
 		jobsConcurrency: jobConcurrency,
+		fileOutput:      fileOutput,
 	}
 	return c
 }
@@ -97,26 +110,36 @@ func (c *crawler) storePeer(ctx context.Context, node *enode.Node) {
 	if err != nil { // not eth2 nodes
 		return
 	}
-	log.Debug("found a eth2 node", log.Ctx{"node": node})
 
-	// get basic info
-	peer, err := models.NewPeer(node, eth2Data)
-	if err != nil {
-		return
-	}
-	// save to db if not exists
-	err = c.peerStore.Create(ctx, peer)
-	if err != nil {
-		log.Error("err inserting peer", log.Ctx{"err": err, "peer": peer.String()})
+	if eth2Data.ForkDigest.String() == MainnetBellatrixForkDigest {
+		log.Debug("found a eth2 node (bellatrix)", log.Ctx{"node": node})
+		// get basic info
+		peer, err := models.NewPeer(node, eth2Data)
+		if err != nil {
+			return
+		}
+		// save to db if not exists
+		err = c.peerStore.Create(ctx, peer)
+		if err != nil {
+			log.Error("err inserting peer", log.Ctx{"err": err, "peer": peer.String()})
+		}
 	}
 }
 
-func (c *crawler) updatePeer(ctx context.Context) {
-	c.runBGWorkersPool(ctx)
+func (c *crawler) updatePeer(ctx context.Context, wg *sync.WaitGroup) {
+	var bgWorkerWg sync.WaitGroup
+	c.runBGWorkersPool(ctx, &bgWorkerWg)
 	for {
 		select {
 		case <-ctx.Done():
 			log.Error("update peer job context was canceled", log.Ctx{"err": ctx.Err()})
+
+			// Wait for the worker pool to finish, then safe to close the write channel
+			bgWorkerWg.Wait()
+			close(c.fileOutput.WorkChan())
+
+			wg.Done()
+			return
 		default:
 			c.selectPendingAndExecute(ctx)
 		}
@@ -151,17 +174,19 @@ func (c *crawler) selectPendingAndExecute(ctx context.Context) {
 	}
 }
 
-func (c *crawler) runBGWorkersPool(ctx context.Context) {
+func (c *crawler) runBGWorkersPool(ctx context.Context, wg *sync.WaitGroup) {
 	for i := 0; i < c.jobsConcurrency; i++ {
-		go c.bgWorker(ctx)
+		wg.Add(1)
+		go c.bgWorker(ctx, wg)
 	}
 }
 
-func (c *crawler) bgWorker(ctx context.Context) {
+func (c *crawler) bgWorker(ctx context.Context, wg *sync.WaitGroup) {
 	for {
 		select {
 		case <-ctx.Done():
 			log.Error("context canceled", log.Ctx{"err": ctx.Err()})
+			wg.Done()
 			return
 		case req := <-c.jobs:
 			c.updatePeerInfo(ctx, req)
@@ -180,6 +205,17 @@ func (c *crawler) updatePeerInfo(ctx context.Context, peer *models.Peer) {
 		if peer.GeoLocation == nil {
 			c.updateGeolocation(ctx, peer)
 		}
+
+		h := sha256.New()
+		h.Write([]byte(peer.ID))
+
+		lastUpdateBytes := make([]byte, 8)
+		binary.LittleEndian.PutUint64(lastUpdateBytes, uint64(peer.LastUpdated))
+		h.Write(lastUpdateBytes)
+		uuid := fmt.Sprintf("%x", h.Sum(nil))
+
+		// TODO: Can we do anything here if this is blocking?
+		c.fileOutput.WorkChan() <- models.PeerOutput{UUID: uuid, ProcessedTimestamp: time.Now().UTC(), Peer: *peer}
 	} else {
 		peer.Score--
 	}
@@ -202,37 +238,43 @@ func (c *crawler) collectNodeInfoRetryer(ctx context.Context, peer *models.Peer)
 	count := 0
 	var err error
 	var ag, pv string
-	for count < 20 {
-		time.Sleep(time.Second * 5)
-		count++
+	for count < 12 {
 
-		err = c.host.Connect(ctx, *peer.GetPeerInfo())
-		if err != nil {
-			continue
-		}
-		// get status
-		var status *common.Status
-		status, err = c.host.FetchStatus(c.host.NewStream, ctx, peer, new(reqresp.SnappyCompression))
-		if err != nil || status == nil {
-			continue
-		}
-		ag, err = c.host.GetAgentVersion(peer.ID)
-		if err != nil {
-			continue
-		} else {
-			peer.SetUserAgent(ag)
-		}
+		select {
+		case <-ctx.Done():
+			log.Info("exiting node retryer, context done")
+			return false
+		case <-time.After(time.Second * 5):
+			count++
 
-		pv, err = c.host.GetProtocolVersion(peer.ID)
-		if err != nil {
-			continue
-		} else {
-			peer.SetProtocolVersion(pv)
+			err = c.host.Connect(ctx, *peer.GetPeerInfo())
+			if err != nil {
+				continue
+			}
+			// get status
+			var status *common.Status
+			status, err = c.host.FetchStatus(c.host.NewStream, ctx, peer, new(reqresp.SnappyCompression))
+			if err != nil || status == nil {
+				continue
+			}
+			ag, err = c.host.GetAgentVersion(peer.ID)
+			if err != nil {
+				continue
+			} else {
+				peer.SetUserAgent(ag)
+			}
+
+			pv, err = c.host.GetProtocolVersion(peer.ID)
+			if err != nil {
+				continue
+			} else {
+				peer.SetProtocolVersion(pv)
+			}
+			// set sync status
+			peer.SetSyncStatus(int64(status.HeadSlot))
+			log.Info("successfully collected all info", peer.Log())
+			return true
 		}
-		// set sync status
-		peer.SetSyncStatus(int64(status.HeadSlot))
-		log.Info("successfully collected all info", peer.Log())
-		return true
 	}
 	// unsuccessful
 	log.Error("failed on retryer", log.Ctx{
