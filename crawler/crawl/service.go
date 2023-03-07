@@ -10,6 +10,7 @@ import (
 	"eth2-crawler/output"
 	"eth2-crawler/store/peerstore"
 	"eth2-crawler/store/record"
+	"eth2-crawler/utils/config"
 	"fmt"
 	"net"
 	"sync"
@@ -37,7 +38,7 @@ type listenConfig struct {
 }
 
 // Initialize initializes the core crawler component
-func Initialize(ctx context.Context, wg *sync.WaitGroup, peerStore peerstore.Provider, historyStore record.Provider, ipResolver ipResolver.Provider, bootNodeAddrs []string, fileOutput *output.FileOutput) error {
+func Initialize(ctx context.Context, wg *sync.WaitGroup, config *config.Crawler, peerStore peerstore.Provider, historyStore record.Provider, ipResolver ipResolver.Provider, bootNodeAddrs []string, fileOutput *output.FileOutput) error {
 	pkey, _ := crypto.GenerateKey()
 	listenCfg := &listenConfig{
 		bootNodeAddrs: bootNodeAddrs,
@@ -67,7 +68,7 @@ func Initialize(ctx context.Context, wg *sync.WaitGroup, peerStore peerstore.Pro
 		return err
 	}
 
-	c := newCrawler(disc, peerStore, historyStore, ipResolver, listenCfg.privateKey, disc.RandomNodes(), host, 200, fileOutput)
+	c := newCrawler(config, disc, peerStore, historyStore, ipResolver, listenCfg.privateKey, disc.RandomNodes(), host, fileOutput)
 	go c.start(ctx)
 
 	// scheduler for updating peer

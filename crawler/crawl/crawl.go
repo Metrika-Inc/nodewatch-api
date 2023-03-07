@@ -17,6 +17,7 @@ import (
 	ipResolver "eth2-crawler/resolver"
 	"eth2-crawler/store/peerstore"
 	"eth2-crawler/store/record"
+	"eth2-crawler/utils/config"
 	"fmt"
 	"sync"
 	"time"
@@ -34,17 +35,19 @@ var (
 )
 
 type crawler struct {
-	disc            resolver
-	peerStore       peerstore.Provider
-	historyStore    record.Provider
-	ipResolver      ipResolver.Provider
-	iter            enode.Iterator
-	nodeCh          chan *enode.Node
-	privateKey      *ecdsa.PrivateKey
-	host            p2p.Host
-	jobs            chan *models.Peer
-	jobsConcurrency int
-	fileOutput      *output.FileOutput
+	crawlerConfig *config.Crawler
+	disc          resolver
+	peerStore     peerstore.Provider
+	historyStore  record.Provider
+	ipResolver    ipResolver.Provider
+	iter          enode.Iterator
+	nodeCh        chan *enode.Node
+	privateKey    *ecdsa.PrivateKey
+	host          p2p.Host
+	jobs          chan *models.Peer
+	// jobsConcurrency int
+	fileOutput *output.FileOutput
+	// decoder    *beacon.ForkDecoder
 }
 
 // resolver holds methods of discovery v5
@@ -53,21 +56,23 @@ type resolver interface {
 }
 
 // newCrawler inits new crawler service
-func newCrawler(disc resolver, peerStore peerstore.Provider, historyStore record.Provider,
+func newCrawler(config *config.Crawler, disc resolver, peerStore peerstore.Provider, historyStore record.Provider,
 	ipResolver ipResolver.Provider, privateKey *ecdsa.PrivateKey, iter enode.Iterator,
-	host p2p.Host, jobConcurrency int, fileOutput *output.FileOutput) *crawler {
+	host p2p.Host, fileOutput *output.FileOutput) *crawler {
 	c := &crawler{
-		disc:            disc,
-		peerStore:       peerStore,
-		historyStore:    historyStore,
-		ipResolver:      ipResolver,
-		privateKey:      privateKey,
-		iter:            iter,
-		nodeCh:          make(chan *enode.Node),
-		host:            host,
-		jobs:            make(chan *models.Peer, jobConcurrency),
-		jobsConcurrency: jobConcurrency,
-		fileOutput:      fileOutput,
+		disc:         disc,
+		peerStore:    peerStore,
+		historyStore: historyStore,
+		ipResolver:   ipResolver,
+		privateKey:   privateKey,
+		iter:         iter,
+		nodeCh:       make(chan *enode.Node),
+		host:         host,
+		jobs:         make(chan *models.Peer, config.Concurrency),
+		// jobsConcurrency: jobConcurrency,
+		fileOutput:    fileOutput,
+		crawlerConfig: config,
+		// decoder:       beacon.NewForkDecoder(&common.Main, nil),
 	}
 	return c
 }
@@ -148,8 +153,8 @@ func (c *crawler) updatePeer(ctx context.Context, wg *sync.WaitGroup) {
 }
 
 func (c *crawler) selectPendingAndExecute(ctx context.Context) {
-	// get peers that was updated 24 hours ago
-	reqs, err := c.peerStore.ListForJob(ctx, time.Hour*24, c.jobsConcurrency)
+	// get peers updated more than config.UpdateFreqMin min ago
+	reqs, err := c.peerStore.ListForJob(ctx, time.Minute*time.Duration(c.crawlerConfig.UpdateFreqMin), c.crawlerConfig.Concurrency)
 	if err != nil {
 		log.Error("error getting list from peerstore", log.Ctx{"err": err})
 		return
@@ -175,7 +180,7 @@ func (c *crawler) selectPendingAndExecute(ctx context.Context) {
 }
 
 func (c *crawler) runBGWorkersPool(ctx context.Context, wg *sync.WaitGroup) {
-	for i := 0; i < c.jobsConcurrency; i++ {
+	for i := 0; i < c.crawlerConfig.Concurrency; i++ {
 		wg.Add(1)
 		go c.bgWorker(ctx, wg)
 	}
@@ -238,7 +243,7 @@ func (c *crawler) collectNodeInfoRetryer(ctx context.Context, peer *models.Peer)
 	count := 0
 	var err error
 	var ag, pv string
-	for count < 12 {
+	for count < c.crawlerConfig.ConnectionRetries {
 
 		select {
 		case <-ctx.Done():

@@ -61,15 +61,13 @@ func main() {
 	// 	log.Fatalf("error Initializing the ip resolver: %s", err.Error())
 	// }
 
-	// TODO: This shouldn't be hard coded, should match the concurrency level
-	fOutputChan := make(chan interface{}, 500)
+	fOutputChan := make(chan interface{}, cfg.Crawler.Concurrency)
 	fOutput, err := output.New(cfg.FileOutput.Path, fOutputChan)
 	if err != nil {
 		log.Fatalf("error Initializing the file output: %s", err.Error())
 	}
 
-	// TODO collect config from a config files or from command args and pass to Start()
-	go crawler.Start(ctx, &wg, peerStore, historyStore, resolverService, fOutput)
+	go crawler.Start(ctx, &wg, cfg.Crawler, peerStore, historyStore, resolverService, fOutput)
 
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: graph.NewResolver(peerStore, historyStore)}))
 
