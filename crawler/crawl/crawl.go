@@ -210,9 +210,10 @@ func (c *crawler) updatePeerInfo(ctx context.Context, peer *models.Peer) {
 		peer.Score = models.ScoreGood
 		peer.LastConnected = time.Now().Unix()
 		// update geolocation
-		if peer.GeoLocation == nil {
-			c.updateGeolocation(ctx, peer)
-		}
+
+		// if peer.GeoLocation == nil {
+		// 	c.updateGeolocation(ctx, peer)
+		// }
 
 		h := sha256.New()
 		h.Write([]byte(peer.ID))
