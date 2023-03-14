@@ -18,6 +18,14 @@ type Configuration struct {
 	Database   *Database   `yaml:"database,omitempty"`
 	Resolver   *Resolver   `yaml:"resolver,omitempty"`
 	FileOutput *FileOutput `yaml:"fileOutput,omitempty"`
+	Crawler    *Crawler    `yaml:"crawler,omitempty"`
+}
+
+type Crawler struct {
+	Concurrency           int    `yaml:"concurrency,omitempty"`
+	ConnectionRetries     int    `yaml:"connection_retries,omitempty"`
+	UpdateFreqMin         int    `yaml:"update_freq_min,omitempty"`
+	GenesisValidatorsRoot string `yaml:"genesis_validators_root,omitempty"`
 }
 
 type FileOutput struct {

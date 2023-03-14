@@ -8,6 +8,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"eth2-crawler/crawler/p2p"
 	reqresp "eth2-crawler/crawler/rpc/request"
 	"eth2-crawler/crawler/util"
@@ -17,34 +18,33 @@ import (
 	ipResolver "eth2-crawler/resolver"
 	"eth2-crawler/store/peerstore"
 	"eth2-crawler/store/record"
+	"eth2-crawler/utils/config"
 	"fmt"
 	"sync"
 	"time"
 
+	"github.com/protolambda/zrnt/eth2/beacon"
 	"github.com/protolambda/zrnt/eth2/beacon/common"
+	"github.com/protolambda/zrnt/eth2/configs"
+	"github.com/protolambda/ztyp/tree"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/enode"
 )
 
-var (
-	MainnetPhase0ForkDigest    = "0xb5303f2a"
-	MainnetAltairForkDigest    = "0xafcaaba0"
-	MainnetBellatrixForkDigest = "0x4a26c58b"
-)
-
 type crawler struct {
-	disc            resolver
-	peerStore       peerstore.Provider
-	historyStore    record.Provider
-	ipResolver      ipResolver.Provider
-	iter            enode.Iterator
-	nodeCh          chan *enode.Node
-	privateKey      *ecdsa.PrivateKey
-	host            p2p.Host
-	jobs            chan *models.Peer
-	jobsConcurrency int
-	fileOutput      *output.FileOutput
+	crawlerConfig *config.Crawler
+	disc          resolver
+	peerStore     peerstore.Provider
+	historyStore  record.Provider
+	ipResolver    ipResolver.Provider
+	iter          enode.Iterator
+	nodeCh        chan *enode.Node
+	privateKey    *ecdsa.PrivateKey
+	host          p2p.Host
+	jobs          chan *models.Peer
+	fileOutput    *output.FileOutput
+	decoder       *beacon.ForkDecoder
 }
 
 // resolver holds methods of discovery v5
@@ -53,21 +53,29 @@ type resolver interface {
 }
 
 // newCrawler inits new crawler service
-func newCrawler(disc resolver, peerStore peerstore.Provider, historyStore record.Provider,
+func newCrawler(config *config.Crawler, disc resolver, peerStore peerstore.Provider, historyStore record.Provider,
 	ipResolver ipResolver.Provider, privateKey *ecdsa.PrivateKey, iter enode.Iterator,
-	host p2p.Host, jobConcurrency int, fileOutput *output.FileOutput) *crawler {
+	host p2p.Host, fileOutput *output.FileOutput) *crawler {
+	root, err := hex.DecodeString(config.GenesisValidatorsRoot)
+	if err != nil {
+		log.Error("failed to decode genesis validator root", log.Ctx{"err": err})
+		panic(100)
+	}
+	var treeRoot tree.Root
+	copy(treeRoot[:], root)
 	c := &crawler{
-		disc:            disc,
-		peerStore:       peerStore,
-		historyStore:    historyStore,
-		ipResolver:      ipResolver,
-		privateKey:      privateKey,
-		iter:            iter,
-		nodeCh:          make(chan *enode.Node),
-		host:            host,
-		jobs:            make(chan *models.Peer, jobConcurrency),
-		jobsConcurrency: jobConcurrency,
-		fileOutput:      fileOutput,
+		disc:          disc,
+		peerStore:     peerStore,
+		historyStore:  historyStore,
+		ipResolver:    ipResolver,
+		privateKey:    privateKey,
+		iter:          iter,
+		nodeCh:        make(chan *enode.Node),
+		host:          host,
+		jobs:          make(chan *models.Peer, config.Concurrency),
+		fileOutput:    fileOutput,
+		crawlerConfig: config,
+		decoder:       beacon.NewForkDecoder(configs.Mainnet, treeRoot),
 	}
 	return c
 }
@@ -111,8 +119,8 @@ func (c *crawler) storePeer(ctx context.Context, node *enode.Node) {
 		return
 	}
 
-	if eth2Data.ForkDigest.String() == MainnetBellatrixForkDigest {
-		log.Debug("found a eth2 node (bellatrix)", log.Ctx{"node": node})
+	if eth2Data.ForkDigest == c.decoder.Bellatrix || eth2Data.ForkDigest == c.decoder.Capella {
+		log.Debug("found a eth2 node", log.Ctx{"node": node})
 		// get basic info
 		peer, err := models.NewPeer(node, eth2Data)
 		if err != nil {
@@ -148,8 +156,8 @@ func (c *crawler) updatePeer(ctx context.Context, wg *sync.WaitGroup) {
 }
 
 func (c *crawler) selectPendingAndExecute(ctx context.Context) {
-	// get peers that was updated 24 hours ago
-	reqs, err := c.peerStore.ListForJob(ctx, time.Hour*24, c.jobsConcurrency)
+	// get peers updated more than config.UpdateFreqMin min ago
+	reqs, err := c.peerStore.ListForJob(ctx, time.Minute*time.Duration(c.crawlerConfig.UpdateFreqMin), c.crawlerConfig.Concurrency)
 	if err != nil {
 		log.Error("error getting list from peerstore", log.Ctx{"err": err})
 		return
@@ -175,7 +183,7 @@ func (c *crawler) selectPendingAndExecute(ctx context.Context) {
 }
 
 func (c *crawler) runBGWorkersPool(ctx context.Context, wg *sync.WaitGroup) {
-	for i := 0; i < c.jobsConcurrency; i++ {
+	for i := 0; i < c.crawlerConfig.Concurrency; i++ {
 		wg.Add(1)
 		go c.bgWorker(ctx, wg)
 	}
@@ -202,9 +210,10 @@ func (c *crawler) updatePeerInfo(ctx context.Context, peer *models.Peer) {
 		peer.Score = models.ScoreGood
 		peer.LastConnected = time.Now().Unix()
 		// update geolocation
-		if peer.GeoLocation == nil {
-			c.updateGeolocation(ctx, peer)
-		}
+
+		// if peer.GeoLocation == nil {
+		// 	c.updateGeolocation(ctx, peer)
+		// }
 
 		h := sha256.New()
 		h.Write([]byte(peer.ID))
@@ -238,7 +247,7 @@ func (c *crawler) collectNodeInfoRetryer(ctx context.Context, peer *models.Peer)
 	count := 0
 	var err error
 	var ag, pv string
-	for count < 12 {
+	for count < c.crawlerConfig.ConnectionRetries {
 
 		select {
 		case <-ctx.Done():

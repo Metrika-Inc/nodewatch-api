@@ -6,6 +6,9 @@ import (
 	"encoding/json"
 	"os"
 	"sync"
+	"time"
+
+	"github.com/ethereum/go-ethereum/log"
 )
 
 type FileOutput struct {
@@ -32,6 +35,9 @@ func New(path string, workChan chan interface{}) (*FileOutput, error) {
 }
 
 func (f *FileOutput) Start(ctx context.Context, wg *sync.WaitGroup) {
+	wg.Add(1)
+	go f.monitorWorkChan(ctx, wg)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -59,4 +65,17 @@ func (f *FileOutput) Start(ctx context.Context, wg *sync.WaitGroup) {
 
 func (f *FileOutput) WorkChan() chan interface{} {
 	return f.workchan
+}
+
+func (f *FileOutput) monitorWorkChan(ctx context.Context, wg *sync.WaitGroup) {
+	t := time.NewTicker(time.Second * 15)
+	for {
+		select {
+		case <-ctx.Done():
+			wg.Done()
+			return
+		case <-t.C:
+			log.Info("Workchan monitor", log.Ctx{"size": len(f.workchan)})
+		}
+	}
 }
