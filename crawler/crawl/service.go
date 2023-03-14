@@ -17,14 +17,10 @@ import (
 
 	"github.com/robfig/cron/v3"
 
-	"eth2-crawler/crawler/p2p"
 	ipResolver "eth2-crawler/resolver"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/libp2p/go-libp2p"
 	ic "github.com/libp2p/go-libp2p-core/crypto"
-	noise "github.com/libp2p/go-libp2p-noise"
-	"github.com/libp2p/go-tcp-transport"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
@@ -52,23 +48,7 @@ func Initialize(ctx context.Context, wg *sync.WaitGroup, config *config.Crawler,
 		return err
 	}
 
-	listenAddrs, err := multiAddressBuilder(listenCfg.listenAddress, listenCfg.listenPORT)
-	if err != nil {
-		return err
-	}
-	host, err := p2p.NewHost(
-		libp2p.Identity(convertToInterfacePrivkey(listenCfg.privateKey)),
-		libp2p.ListenAddrs(listenAddrs),
-		libp2p.UserAgent("Eth2-Crawler"),
-		libp2p.Transport(tcp.NewTCPTransport),
-		libp2p.Security(noise.ID, noise.New),
-		libp2p.NATPortMap(),
-	)
-	if err != nil {
-		return err
-	}
-
-	c := newCrawler(config, disc, peerStore, historyStore, ipResolver, listenCfg.privateKey, disc.RandomNodes(), host, fileOutput)
+	c := newCrawler(config, disc, peerStore, historyStore, ipResolver, listenCfg.privateKey, disc.RandomNodes(), fileOutput)
 	go c.start(ctx)
 
 	// scheduler for updating peer
@@ -78,6 +58,10 @@ func Initialize(ctx context.Context, wg *sync.WaitGroup, config *config.Crawler,
 	// Start file output
 	wg.Add(1)
 	go c.fileOutput.Start(ctx, wg)
+
+	// Begin host refresh time
+	wg.Add(1)
+	go c.updateHost(ctx, wg)
 
 	// add scheduler for updating history store
 	scheduler := cron.New()

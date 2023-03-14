@@ -20,14 +20,19 @@ import (
 	"eth2-crawler/store/record"
 	"eth2-crawler/utils/config"
 	"fmt"
+	"net"
 	"sync"
 	"time"
 
+	"github.com/libp2p/go-libp2p"
+	noise "github.com/libp2p/go-libp2p-noise"
+	"github.com/libp2p/go-tcp-transport"
 	"github.com/protolambda/zrnt/eth2/beacon"
 	"github.com/protolambda/zrnt/eth2/beacon/common"
 	"github.com/protolambda/zrnt/eth2/configs"
 	"github.com/protolambda/ztyp/tree"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/enode"
 )
@@ -45,6 +50,7 @@ type crawler struct {
 	jobs          chan *models.Peer
 	fileOutput    *output.FileOutput
 	decoder       *beacon.ForkDecoder
+	hostLock      sync.RWMutex
 }
 
 // resolver holds methods of discovery v5
@@ -55,7 +61,7 @@ type resolver interface {
 // newCrawler inits new crawler service
 func newCrawler(config *config.Crawler, disc resolver, peerStore peerstore.Provider, historyStore record.Provider,
 	ipResolver ipResolver.Provider, privateKey *ecdsa.PrivateKey, iter enode.Iterator,
-	host p2p.Host, fileOutput *output.FileOutput) *crawler {
+	fileOutput *output.FileOutput) *crawler {
 	root, err := hex.DecodeString(config.GenesisValidatorsRoot)
 	if err != nil {
 		log.Error("failed to decode genesis validator root", log.Ctx{"err": err})
@@ -63,6 +69,13 @@ func newCrawler(config *config.Crawler, disc resolver, peerStore peerstore.Provi
 	}
 	var treeRoot tree.Root
 	copy(treeRoot[:], root)
+
+	host, err := newHost()
+	if err != nil {
+		log.Error("failed create new host", log.Ctx{"err": err})
+		panic(101)
+	}
+
 	c := &crawler{
 		disc:          disc,
 		peerStore:     peerStore,
@@ -80,6 +93,31 @@ func newCrawler(config *config.Crawler, disc resolver, peerStore peerstore.Provi
 	return c
 }
 
+func newHost() (p2p.Host, error) {
+	pkey, err := crypto.GenerateKey()
+	if err != nil {
+		return nil, err
+	}
+
+	listenAddrs, err := multiAddressBuilder(net.IPv4zero, 30304)
+	if err != nil {
+		return nil, err
+	}
+	host, err := p2p.NewHost(
+		libp2p.Identity(convertToInterfacePrivkey(pkey)),
+		libp2p.ListenAddrs(listenAddrs),
+		libp2p.UserAgent("Eth2-Crawler"),
+		libp2p.Transport(tcp.NewTCPTransport),
+		libp2p.Security(noise.ID, noise.New),
+		libp2p.NATPortMap(),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return host, nil
+}
+
 // start runs the crawler
 func (c *crawler) start(ctx context.Context) {
 	doneCh := make(chan enode.Iterator)
@@ -93,6 +131,39 @@ func (c *crawler) start(ctx context.Context) {
 			log.Info("finished iterator")
 			return
 		}
+	}
+}
+
+func (c *crawler) updateHost(ctx context.Context, wg *sync.WaitGroup) {
+	ticker := time.NewTicker(time.Minute * time.Duration(c.crawlerConfig.UpdateFreqMin))
+	// ticker := time.NewTicker(time.Minute * 1)
+	for {
+		select {
+		case <-ctx.Done():
+			ticker.Stop()
+			wg.Done()
+			return
+		case <-ticker.C:
+			c.hostLock.Lock()
+
+			// Close the current connections
+			c.host.Close()
+
+		net:
+			for {
+				host, err := newHost()
+				if err != nil {
+					log.Error("failed create new host", log.Ctx{"err": err})
+					time.Sleep(time.Second * 5)
+					continue
+				}
+				c.host = host
+				log.Info("successfully created new host")
+				break net
+			}
+		}
+
+		c.hostLock.Unlock()
 	}
 }
 
@@ -244,6 +315,8 @@ func (c *crawler) updatePeerInfo(ctx context.Context, peer *models.Peer) {
 }
 
 func (c *crawler) collectNodeInfoRetryer(ctx context.Context, peer *models.Peer) bool {
+	c.hostLock.RLock()
+	defer c.hostLock.RUnlock()
 	count := 0
 	var err error
 	var ag, pv string
