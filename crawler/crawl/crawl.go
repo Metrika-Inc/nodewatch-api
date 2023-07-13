@@ -99,12 +99,16 @@ func newHost() (p2p.Host, error) {
 		return nil, err
 	}
 
+	cpkey, err := convertToInterfacePrivkey(pkey)
+	if err != nil {
+	}
+
 	listenAddrs, err := multiAddressBuilder(net.IPv4zero, 30304)
 	if err != nil {
 		return nil, err
 	}
 	host, err := p2p.NewHost(
-		libp2p.Identity(convertToInterfacePrivkey(pkey)),
+		libp2p.Identity(cpkey),
 		libp2p.ListenAddrs(listenAddrs),
 		libp2p.UserAgent("Eth2-Crawler"),
 		libp2p.Transport(tcp.NewTCPTransport),

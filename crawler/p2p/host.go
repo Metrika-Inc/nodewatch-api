@@ -43,7 +43,7 @@ type idService interface {
 
 // NewHost initializes custom host
 func NewHost(opt ...libp2p.Option) (Host, error) {
-	h, err := libp2p.New(context.Background(), opt...)
+	h, err := libp2p.New(opt...)
 	if err != nil {
 		return nil, err
 	}

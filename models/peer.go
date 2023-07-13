@@ -14,8 +14,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/enode"
-	ic "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/protolambda/zrnt/eth2/beacon/common"
 )
@@ -169,8 +169,13 @@ type PeerOutput struct {
 
 // NewPeer initializes new peer
 func NewPeer(node *enode.Node, eth2Data *common.Eth2Data) (*Peer, error) {
-	pk := ic.PubKey((*ic.Secp256k1PublicKey)(node.Pubkey()))
-	pkByte, err := pk.Raw()
+
+	pubkey := node.Pubkey()
+	key, err := crypto.ECDSAPublicKeyFromPubKey(*pubkey)
+	if err != nil {
+		return nil, err
+	}
+	pkByte, err := key.Raw()
 	if err != nil {
 		return nil, err
 	}

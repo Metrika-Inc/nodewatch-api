@@ -20,7 +20,7 @@ import (
 	ipResolver "eth2-crawler/resolver"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	ic "github.com/libp2p/go-libp2p-core/crypto"
+	ic "github.com/libp2p/go-libp2p/core/crypto"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
@@ -73,9 +73,9 @@ func Initialize(ctx context.Context, wg *sync.WaitGroup, config *config.Crawler,
 	return nil
 }
 
-func convertToInterfacePrivkey(privkey *ecdsa.PrivateKey) ic.PrivKey {
-	typeAssertedKey := ic.PrivKey((*ic.Secp256k1PrivateKey)(privkey))
-	return typeAssertedKey
+func convertToInterfacePrivkey(privkey *ecdsa.PrivateKey) (ic.PrivKey, error) {
+	priv, _, err := ic.KeyPairFromStdKey(privkey)
+	return priv, err
 }
 
 func multiAddressBuilder(ipAddr net.IP, port int) (ma.Multiaddr, error) {
