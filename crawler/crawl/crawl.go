@@ -352,8 +352,13 @@ func (c *crawler) collectNodeInfoRetryer(ctx context.Context, peer *models.Peer)
 			} else {
 				peer.SetProtocolVersion(pv)
 			}
+
 			// set sync status
 			peer.SetSyncStatus(int64(status.HeadSlot))
+
+			// Set the fork digest if it has changed
+			peer.SetForkDigest(status.ForkDigest)
+
 			log.Info("successfully collected all info", peer.Log())
 			return true
 		}

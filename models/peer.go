@@ -342,3 +342,8 @@ func (p *Peer) Log() log.Ctx {
 	}
 	return val
 }
+
+func (p *Peer) SetForkDigest(digest common.ForkDigest) {
+	p.ForkDigest = digest
+	p.ForkDigestStr = digest.String()
+}
