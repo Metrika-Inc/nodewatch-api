@@ -32,7 +32,6 @@ import (
 	"github.com/protolambda/zrnt/eth2/configs"
 	"github.com/protolambda/ztyp/tree"
 
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/enode"
 )
@@ -94,24 +93,24 @@ func newCrawler(config *config.Crawler, disc resolver, peerStore peerstore.Provi
 }
 
 func newHost() (p2p.Host, error) {
-	pkey, err := crypto.GenerateKey()
-	if err != nil {
-		log.Error("failed generate key", log.Ctx{"err": err})
-		return nil, err
-	}
+	// pkey, err := crypto.GenerateKey()
+	// if err != nil {
+	// 	log.Error("failed generate key", log.Ctx{"err": err})
+	// 	return nil, err
+	// }
 
-	cpkey, err := convertToInterfacePrivkey(pkey)
-	if err != nil {
-		log.Error("failed convert key", log.Ctx{"err": err})
-		return nil, err
-	}
+	// cpkey, err := convertToInterfacePrivkey(pkey)
+	// if err != nil {
+	// 	log.Error("failed convert key", log.Ctx{"err": err})
+	// 	return nil, err
+	// }
 
 	listenAddrs, err := multiAddressBuilder(net.IPv4zero, 30304)
 	if err != nil {
 		return nil, err
 	}
 	host, err := p2p.NewHost(
-		libp2p.Identity(cpkey),
+		// libp2p.Identity(cpkey),
 		libp2p.ListenAddrs(listenAddrs),
 		libp2p.UserAgent("Eth2-Crawler"),
 		libp2p.Transport(tcp.NewTCPTransport),
@@ -119,7 +118,7 @@ func newHost() (p2p.Host, error) {
 		libp2p.NATPortMap(),
 	)
 	if err != nil {
-		log.Error("failed create host", log.Ctx{"err": err})
+		log.Error("failed create new host", log.Ctx{"err": err})
 		return nil, err
 	}
 

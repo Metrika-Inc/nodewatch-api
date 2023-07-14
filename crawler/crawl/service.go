@@ -74,7 +74,7 @@ func Initialize(ctx context.Context, wg *sync.WaitGroup, config *config.Crawler,
 }
 
 func convertToInterfacePrivkey(privkey *ecdsa.PrivateKey) (ic.PrivKey, error) {
-	priv, _, err := ic.KeyPairFromStdKey(privkey)
+	priv, _, err := ic.ECDSAKeyPairFromKey(privkey)
 	return priv, err
 }
 
