@@ -96,11 +96,14 @@ func newCrawler(config *config.Crawler, disc resolver, peerStore peerstore.Provi
 func newHost() (p2p.Host, error) {
 	pkey, err := crypto.GenerateKey()
 	if err != nil {
+		log.Error("failed generate key", log.Ctx{"err": err})
 		return nil, err
 	}
 
 	cpkey, err := convertToInterfacePrivkey(pkey)
 	if err != nil {
+		log.Error("failed convert key", log.Ctx{"err": err})
+		return nil, err
 	}
 
 	listenAddrs, err := multiAddressBuilder(net.IPv4zero, 30304)
@@ -116,6 +119,7 @@ func newHost() (p2p.Host, error) {
 		libp2p.NATPortMap(),
 	)
 	if err != nil {
+		log.Error("failed create host", log.Ctx{"err": err})
 		return nil, err
 	}
 
