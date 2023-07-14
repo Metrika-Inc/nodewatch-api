@@ -48,7 +48,7 @@ func Initialize(ctx context.Context, wg *sync.WaitGroup, config *config.Crawler,
 		return err
 	}
 
-	c := newCrawler(config, disc, peerStore, historyStore, ipResolver, listenCfg.privateKey, disc.RandomNodes(), fileOutput)
+	c := newCrawler(config, disc, peerStore, historyStore, ipResolver, disc.RandomNodes(), fileOutput)
 	go c.start(ctx)
 
 	// scheduler for updating peer

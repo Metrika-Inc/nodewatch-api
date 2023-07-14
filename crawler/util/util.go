@@ -7,12 +7,12 @@ package util
 import (
 	"bytes"
 	"encoding/hex"
+	"eth2-crawler/utils/crypto"
 	"fmt"
 	"net"
 	"time"
 
 	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	beacon "github.com/protolambda/zrnt/eth2/beacon/common"
@@ -50,7 +50,7 @@ func EnodeToMultiAddr(node *enode.Node) ([]multiaddr.Multiaddr, error) {
 		ipScheme = "ip6"
 	}
 	pubkey := node.Pubkey()
-	key, err := crypto.ECDSAPublicKeyFromPubKey(*pubkey)
+	key, err := crypto.ConvertToInterfacePubkey(pubkey)
 	if err != nil {
 		return nil, err
 	}

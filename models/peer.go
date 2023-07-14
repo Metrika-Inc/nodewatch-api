@@ -7,14 +7,15 @@ package models
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
 	"eth2-crawler/crawler/util"
+	"eth2-crawler/utils/crypto"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/protolambda/zrnt/eth2/beacon/common"
@@ -171,16 +172,19 @@ type PeerOutput struct {
 func NewPeer(node *enode.Node, eth2Data *common.Eth2Data) (*Peer, error) {
 
 	pubkey := node.Pubkey()
-	key, err := crypto.ECDSAPublicKeyFromPubKey(*pubkey)
+	key, err := crypto.ConvertToInterfacePubkey(pubkey)
 	if err != nil {
+		fmt.Printf("error in getting pubkey from node: %v\n", err)
 		return nil, err
 	}
 	pkByte, err := key.Raw()
 	if err != nil {
+		fmt.Printf("error in getting raw pubkey: %v\n", err)
 		return nil, err
 	}
 	addr, err := util.AddrsFromEnode(node)
 	if err != nil {
+		fmt.Printf("error in getting addrs from node: %v\n", err)
 		return nil, err
 	}
 	addrStr := make([]string, 0)

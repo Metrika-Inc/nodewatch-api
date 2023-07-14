@@ -5,7 +5,6 @@ package crawl
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
@@ -19,6 +18,7 @@ import (
 	"eth2-crawler/store/peerstore"
 	"eth2-crawler/store/record"
 	"eth2-crawler/utils/config"
+	uc "eth2-crawler/utils/crypto"
 	"fmt"
 	"net"
 	"sync"
@@ -32,6 +32,7 @@ import (
 	"github.com/protolambda/zrnt/eth2/configs"
 	"github.com/protolambda/ztyp/tree"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/enode"
 )
@@ -44,7 +45,6 @@ type crawler struct {
 	ipResolver    ipResolver.Provider
 	iter          enode.Iterator
 	nodeCh        chan *enode.Node
-	privateKey    *ecdsa.PrivateKey
 	host          p2p.Host
 	jobs          chan *models.Peer
 	fileOutput    *output.FileOutput
@@ -59,7 +59,7 @@ type resolver interface {
 
 // newCrawler inits new crawler service
 func newCrawler(config *config.Crawler, disc resolver, peerStore peerstore.Provider, historyStore record.Provider,
-	ipResolver ipResolver.Provider, privateKey *ecdsa.PrivateKey, iter enode.Iterator,
+	ipResolver ipResolver.Provider, iter enode.Iterator,
 	fileOutput *output.FileOutput) *crawler {
 	root, err := hex.DecodeString(config.GenesisValidatorsRoot)
 	if err != nil {
@@ -76,11 +76,11 @@ func newCrawler(config *config.Crawler, disc resolver, peerStore peerstore.Provi
 	}
 
 	c := &crawler{
-		disc:          disc,
-		peerStore:     peerStore,
-		historyStore:  historyStore,
-		ipResolver:    ipResolver,
-		privateKey:    privateKey,
+		disc:         disc,
+		peerStore:    peerStore,
+		historyStore: historyStore,
+		ipResolver:   ipResolver,
+		// privateKey:    privateKey,
 		iter:          iter,
 		nodeCh:        make(chan *enode.Node),
 		host:          host,
@@ -93,24 +93,24 @@ func newCrawler(config *config.Crawler, disc resolver, peerStore peerstore.Provi
 }
 
 func newHost() (p2p.Host, error) {
-	// pkey, err := crypto.GenerateKey()
-	// if err != nil {
-	// 	log.Error("failed generate key", log.Ctx{"err": err})
-	// 	return nil, err
-	// }
+	pkey, err := crypto.GenerateKey()
+	if err != nil {
+		log.Error("failed generate key", log.Ctx{"err": err})
+		return nil, err
+	}
 
-	// cpkey, err := convertToInterfacePrivkey(pkey)
-	// if err != nil {
-	// 	log.Error("failed convert key", log.Ctx{"err": err})
-	// 	return nil, err
-	// }
+	cpkey, err := uc.ConvertToInterfacePrivkey(pkey)
+	if err != nil {
+		log.Error("failed convert key", log.Ctx{"err": err})
+		return nil, err
+	}
 
 	listenAddrs, err := multiAddressBuilder(net.IPv4zero, 30304)
 	if err != nil {
 		return nil, err
 	}
 	host, err := p2p.NewHost(
-		// libp2p.Identity(cpkey),
+		libp2p.Identity(cpkey),
 		libp2p.ListenAddrs(listenAddrs),
 		libp2p.UserAgent("Eth2-Crawler"),
 		libp2p.Transport(tcp.NewTCPTransport),
