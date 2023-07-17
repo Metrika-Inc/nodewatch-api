@@ -22,7 +22,7 @@ fileOutput:
   path: "./crawler.out"
 
 crawler:
-  concurrency: 25
-  connection_retries: 5
+  concurrency: 1
+  connection_retries: 2
   update_freq_min: 1440
   genesis_validators_root: "4b363db94e286120d76eb905340fdd4e54bfe9f06bf33ff6cf5ad27f511bfe95"

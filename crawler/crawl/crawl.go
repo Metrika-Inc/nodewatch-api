@@ -20,11 +20,14 @@ import (
 	"eth2-crawler/utils/config"
 	uc "eth2-crawler/utils/crypto"
 	"fmt"
+	"math/rand"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p/p2p/net/swarm"
 	noise "github.com/libp2p/go-libp2p/p2p/security/noise"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"github.com/protolambda/zrnt/eth2/beacon"
@@ -112,7 +115,7 @@ func newHost() (p2p.Host, error) {
 	host, err := p2p.NewHost(
 		libp2p.Identity(cpkey),
 		libp2p.ListenAddrs(listenAddrs),
-		libp2p.UserAgent("Eth2-Crawler"),
+		libp2p.UserAgent(fmt.Sprintf("Eth2-Crawler-%d", rand.Int31())),
 		libp2p.Transport(tcp.NewTCPTransport),
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.NATPortMap(),
@@ -338,12 +341,33 @@ func (c *crawler) collectNodeInfoRetryer(ctx context.Context, peer *models.Peer)
 
 			err = c.host.Connect(ctx, *peer.GetPeerInfo())
 			if err != nil {
+				// fmt.Printf("error connecting to peer, %s, %T\n", err, err)
+
+				switch t := err.(type) {
+				default:
+					fmt.Printf("unknown type %T\n", t)
+				case *swarm.DialError:
+					// fmt.Printf("swarm dial error %s\n", &t.DialErrors)
+					// fmt.Println("==================================")
+					for _, e := range t.DialErrors {
+						// fmt.Printf("swarm dial error %s, timeout: %+v, type: %T, unwrap: %T\n", e.Cause, t.Timeout(), e.Cause, errors.Unwrap(e.Cause))
+						// Bit ugly but failing to negotiate security protocol is a good indicator that the node will never be able to connect
+						if strings.HasPrefix(e.Cause.Error(), "failed to negotiate security protocol") {
+							log.Debug("failed to negotiate security protocol, removing peer", peer.ID.String())
+							peer.Score = models.ScoreBad
+							break
+						}
+					}
+					// fmt.Println("==================================")
+				}
+
 				continue
 			}
 			// get status
 			var status *common.Status
 			status, err = c.host.FetchStatus(c.host.NewStream, ctx, peer, new(reqresp.SnappyCompression))
 			if err != nil || status == nil {
+				fmt.Printf("Non-success result fetching status, err: %s", err)
 				continue
 			}
 			ag, err = c.host.GetAgentVersion(peer.ID)
