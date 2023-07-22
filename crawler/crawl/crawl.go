@@ -113,6 +113,7 @@ func newHost() (p2p.Host, error) {
 		return nil, err
 	}
 	host, err := p2p.NewHost(
+		context.Background(),
 		libp2p.Identity(cpkey),
 		libp2p.ListenAddrs(listenAddrs),
 		libp2p.UserAgent(fmt.Sprintf("Eth2-Crawler-%d", rand.Int31())),
@@ -125,6 +126,10 @@ func newHost() (p2p.Host, error) {
 		return nil, err
 	}
 
+	log.Info("---------------")
+	log.Info("host created", log.Ctx{"host": host.ID().String()})
+	log.Info("---------------")
+
 	return host, nil
 }
 
@@ -135,7 +140,12 @@ func (c *crawler) start(ctx context.Context) {
 	for {
 		select {
 		case n := <-c.nodeCh:
+
+			n, _ = enode.Parse(enode.ValidSchemes, "enr:-Ly4QFVocLxqCeH7DU8xp7wqZIYMXSRt0-IRXYL2rbwnVKIkf4hkBZi2fPBaj7NEMrSG7NEUEYEo6MoKai766-8hX20Ih2F0dG5ldHOIAMAAAAAAAACEZXRoMpC7pNqWAwAAAP__________gmlkgnY0gmlwhANZlViJc2VjcDI1NmsxoQJX3n8YarSIbLP4zi9dnyqtVOHqZEuQH2B55AbdEu7iCIhzeW5jbmV0cwCDdGNwgiMog3VkcIIjKA")
 			c.storePeer(ctx, n)
+
+			log.Info("Stored peer, returning", log.Ctx{"peer": n.String()})
+			return
 		case <-doneCh:
 			// crawling finished
 			log.Info("finished iterator")
@@ -144,38 +154,38 @@ func (c *crawler) start(ctx context.Context) {
 	}
 }
 
-func (c *crawler) updateHost(ctx context.Context, wg *sync.WaitGroup) {
-	ticker := time.NewTicker(time.Minute * time.Duration(c.crawlerConfig.UpdateFreqMin))
-	// ticker := time.NewTicker(time.Minute * 1)
-	for {
-		select {
-		case <-ctx.Done():
-			ticker.Stop()
-			wg.Done()
-			return
-		case <-ticker.C:
-			c.hostLock.Lock()
+// func (c *crawler) updateHost(ctx context.Context, wg *sync.WaitGroup) {
+// 	ticker := time.NewTicker(time.Minute * time.Duration(c.crawlerConfig.UpdateFreqMin))
+// 	// ticker := time.NewTicker(time.Minute * 1)
+// 	for {
+// 		select {
+// 		case <-ctx.Done():
+// 			ticker.Stop()
+// 			wg.Done()
+// 			return
+// 		case <-ticker.C:
+// 			c.hostLock.Lock()
 
-			// Close the current connections
-			c.host.Close()
+// 			// Close the current connections
+// 			c.host.Close()
 
-		net:
-			for {
-				host, err := newHost()
-				if err != nil {
-					log.Error("failed create new host", log.Ctx{"err": err})
-					time.Sleep(time.Second * 5)
-					continue
-				}
-				c.host = host
-				log.Info("successfully created new host")
-				break net
-			}
-		}
+// 		net:
+// 			for {
+// 				host, err := newHost()
+// 				if err != nil {
+// 					log.Error("failed create new host", log.Ctx{"err": err})
+// 					time.Sleep(time.Second * 5)
+// 					continue
+// 				}
+// 				c.host = host
+// 				log.Info("successfully created new host")
+// 				break net
+// 			}
+// 		}
 
-		c.hostLock.Unlock()
-	}
-}
+// 		c.hostLock.Unlock()
+// 	}
+// }
 
 // runIterator uses the node iterator and sends node data through channel
 func (c *crawler) runIterator(ctx context.Context, doneCh chan enode.Iterator, it enode.Iterator) {

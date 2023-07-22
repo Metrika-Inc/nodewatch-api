@@ -11,6 +11,7 @@ import (
 	"net"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/discover"
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/p2p/enr"
@@ -23,6 +24,9 @@ func startV5(listenCfg *listenConfig) (*discover.UDPv5, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	log.Info("Starting v5 discovery node", "enode", ln.Node().String())
+
 	socket, err := listen(listenCfg)
 	if err != nil {
 		return nil, err
