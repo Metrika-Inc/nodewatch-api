@@ -150,10 +150,10 @@ func (c *crawler) start(ctx context.Context) {
 		select {
 		case n := <-c.nodeCh:
 
-			n, _ = enode.Parse(enode.ValidSchemes, "enr:-Ly4QFVocLxqCeH7DU8xp7wqZIYMXSRt0-IRXYL2rbwnVKIkf4hkBZi2fPBaj7NEMrSG7NEUEYEo6MoKai766-8hX20Ih2F0dG5ldHOIAMAAAAAAAACEZXRoMpC7pNqWAwAAAP__________gmlkgnY0gmlwhANZlViJc2VjcDI1NmsxoQJX3n8YarSIbLP4zi9dnyqtVOHqZEuQH2B55AbdEu7iCIhzeW5jbmV0cwCDdGNwgiMog3VkcIIjKA")
+			// n, _ = enode.Parse(enode.ValidSchemes, "enr:-Ly4QFVocLxqCeH7DU8xp7wqZIYMXSRt0-IRXYL2rbwnVKIkf4hkBZi2fPBaj7NEMrSG7NEUEYEo6MoKai766-8hX20Ih2F0dG5ldHOIAMAAAAAAAACEZXRoMpC7pNqWAwAAAP__________gmlkgnY0gmlwhANZlViJc2VjcDI1NmsxoQJX3n8YarSIbLP4zi9dnyqtVOHqZEuQH2B55AbdEu7iCIhzeW5jbmV0cwCDdGNwgiMog3VkcIIjKA")
 			c.storePeer(ctx, n)
 
-			log.Info("Stored peer, returning", log.Ctx{"peer": n.String()})
+			// log.Info("Stored peer, returning", log.Ctx{"peer": n.String()})
 			return
 		case <-doneCh:
 			// crawling finished
@@ -219,7 +219,7 @@ func (c *crawler) storePeer(ctx context.Context, node *enode.Node) {
 		return
 	}
 
-	if eth2Data.ForkDigest == c.decoder.Bellatrix || eth2Data.ForkDigest == c.decoder.Capella {
+	if eth2Data.ForkDigest == c.decoder.Capella {
 		log.Debug("found a eth2 node", log.Ctx{"node": node})
 		// get basic info
 		peer, err := models.NewPeer(node, eth2Data)
