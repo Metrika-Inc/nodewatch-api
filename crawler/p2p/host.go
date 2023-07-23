@@ -52,8 +52,14 @@ func newClient(ctx context.Context, h host.Host, idSvc idService) *Client {
 }
 
 func newLocalStatus() common.Status {
+
+	// TODO: Make this dynamic
+	capella := "0xbba4da96"
+	digest := new(common.ForkDigest)
+	digest.UnmarshalText([]byte(capella))
+
 	return common.Status{
-		ForkDigest:     beacon.ForkDigest{},
+		ForkDigest:     *digest,
 		FinalizedRoot:  beacon.Root{},
 		FinalizedEpoch: 0,
 		HeadRoot:       beacon.Root{},
@@ -165,18 +171,18 @@ func (c *Client) GetAgentVersion(peerID peer.ID) (string, error) {
 
 func (c *Client) FetchStatus(sFn reqresp.NewStreamFn, ctx context.Context, peer *models.Peer, comp reqresp.Compression) (
 	*beacon.Status, error) {
-	// use the fork digest same of peer to avoid stream reset
-	status := &beacon.Status{
-		ForkDigest:     peer.ForkDigest,
-		FinalizedRoot:  beacon.Root{},
-		FinalizedEpoch: 0,
-		HeadRoot:       beacon.Root{},
-		HeadSlot:       0,
-	}
+	// // use the fork digest same of peer to avoid stream reset
+	// status := &beacon.Status{
+	// 	ForkDigest:     peer.ForkDigest,
+	// 	FinalizedRoot:  beacon.Root{},
+	// 	FinalizedEpoch: 0,
+	// 	HeadRoot:       beacon.Root{},
+	// 	HeadSlot:       0,
+	// }
 	resCode := reqresp.ServerErrCode // error by default
 	var data *beacon.Status
 	err := methods.StatusRPCv1.RunRequest(ctx, sFn, peer.ID, comp,
-		reqresp.RequestSSZInput{Obj: status}, 1,
+		reqresp.RequestSSZInput{Obj: &c.LocalStatus}, 1,
 		func() error {
 			return nil
 		},

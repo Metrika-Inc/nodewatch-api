@@ -12,6 +12,7 @@ require (
 	github.com/ipdata/go v0.7.2
 	github.com/libp2p/go-libp2p v0.28.1
 	github.com/libp2p/go-libp2p-core v0.20.1
+	github.com/libp2p/go-libp2p-pubsub v0.9.3
 	github.com/multiformats/go-multiaddr v0.10.1
 	github.com/pkg/errors v0.9.1
 	github.com/protolambda/zrnt v0.30.0

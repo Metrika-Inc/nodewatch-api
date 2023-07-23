@@ -23,6 +23,6 @@ fileOutput:
 
 crawler:
   concurrency: 1
-  connection_retries: 2
-  update_freq_min: 5
+  connection_retries: 8
+  update_freq_min: 2
   genesis_validators_root: "4b363db94e286120d76eb905340fdd4e54bfe9f06bf33ff6cf5ad27f511bfe95"

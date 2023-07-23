@@ -38,6 +38,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/enode"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
 
 type crawler struct {
@@ -49,6 +50,7 @@ type crawler struct {
 	iter          enode.Iterator
 	nodeCh        chan *enode.Node
 	host          p2p.Host
+	pubSub        *pubsub.PubSub
 	jobs          chan *models.Peer
 	fileOutput    *output.FileOutput
 	decoder       *beacon.ForkDecoder
@@ -78,6 +80,12 @@ func newCrawler(config *config.Crawler, disc resolver, peerStore peerstore.Provi
 		panic(101)
 	}
 
+	gs, err := startGossipSub(context.TODO(), host)
+	if err != nil {
+		log.Error("failed start ", log.Ctx{"err": err})
+		panic(102)
+	}
+
 	c := &crawler{
 		disc:         disc,
 		peerStore:    peerStore,
@@ -87,6 +95,7 @@ func newCrawler(config *config.Crawler, disc resolver, peerStore peerstore.Provi
 		iter:          iter,
 		nodeCh:        make(chan *enode.Node),
 		host:          host,
+		pubSub:        gs,
 		jobs:          make(chan *models.Peer, config.Concurrency),
 		fileOutput:    fileOutput,
 		crawlerConfig: config,
@@ -368,7 +377,6 @@ func (c *crawler) collectNodeInfoRetryer(ctx context.Context, peer *models.Peer)
 							break
 						}
 					}
-					// fmt.Println("==================================")
 				}
 
 				continue
