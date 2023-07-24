@@ -149,12 +149,11 @@ func (c *crawler) start(ctx context.Context) {
 	for {
 		select {
 		case n := <-c.nodeCh:
-
 			// n, _ = enode.Parse(enode.ValidSchemes, "enr:-Ly4QFVocLxqCeH7DU8xp7wqZIYMXSRt0-IRXYL2rbwnVKIkf4hkBZi2fPBaj7NEMrSG7NEUEYEo6MoKai766-8hX20Ih2F0dG5ldHOIAMAAAAAAAACEZXRoMpC7pNqWAwAAAP__________gmlkgnY0gmlwhANZlViJc2VjcDI1NmsxoQJX3n8YarSIbLP4zi9dnyqtVOHqZEuQH2B55AbdEu7iCIhzeW5jbmV0cwCDdGNwgiMog3VkcIIjKA")
 			c.storePeer(ctx, n)
 
 			// log.Info("Stored peer, returning", log.Ctx{"peer": n.String()})
-			return
+			// return
 		case <-doneCh:
 			// crawling finished
 			log.Info("finished iterator")
