@@ -216,7 +216,7 @@ func (c *Client) ServeBeaconPing() {
 		}
 		comp := new(reqresp.SnappyCompression)
 		listenReq := func(ctx context.Context, peerId peer.ID, handler reqresp.ChunkedRequestHandler) {
-			log.Info("Handling ping request from %s", peerId.String())
+			log.Info("Handling ping request", "peer", peerId.String())
 			var ping common.Ping
 			err := handler.ReadRequest(&ping)
 			if err != nil {
@@ -283,7 +283,7 @@ func (c *Client) ServeBeaconMetadata() {
 		}
 		comp := new(reqresp.SnappyCompression)
 		listenReq := func(ctx context.Context, peerId peer.ID, handler reqresp.ChunkedRequestHandler) {
-			log.Info("Handling metadata request from %s", peerId.String())
+			log.Info("Handling metadata request", "peer", peerId.String())
 			var reqMetadata common.MetaData
 			err := handler.ReadRequest(&reqMetadata)
 			if err != nil {

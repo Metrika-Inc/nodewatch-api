@@ -385,7 +385,7 @@ func (c *crawler) collectNodeInfoRetryer(ctx context.Context, peer *models.Peer)
 			var status *common.Status
 			status, err = c.host.FetchStatus(c.host.NewStream, ctx, peer, new(reqresp.SnappyCompression))
 			if err != nil || status == nil {
-				fmt.Printf("Non-success result fetching status, err: %s", err)
+				fmt.Printf("Non-success result fetching status, err: %s\n", err)
 				continue
 			}
 			ag, err = c.host.GetAgentVersion(peer.ID)
