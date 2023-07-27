@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p/p2p/muxer/mplex"
 	"github.com/libp2p/go-libp2p/p2p/net/swarm"
 	noise "github.com/libp2p/go-libp2p/p2p/security/noise"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
@@ -128,6 +129,7 @@ func newHost() (p2p.Host, error) {
 		libp2p.UserAgent(fmt.Sprintf("Eth2-Crawler-%d", rand.Int31())),
 		libp2p.Transport(tcp.NewTCPTransport),
 		libp2p.Security(noise.ID, noise.New),
+		libp2p.ChainOptions(libp2p.DefaultMuxers, libp2p.Muxer(mplex.ID, mplex.DefaultTransport)),
 		libp2p.NATPortMap(),
 	)
 	if err != nil {
