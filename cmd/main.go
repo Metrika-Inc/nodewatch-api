@@ -44,10 +44,6 @@ func main() {
 		log.Fatalf("error loading configuration: %s", err.Error())
 	}
 
-	fmt.Println("---------------")
-	fmt.Println(cfg.Database)
-	fmt.Println("---------------")
-
 	peerStore, err := peerStore.New(cfg.Database)
 	if err != nil {
 		log.Fatalf("error Initializing the peer store: %s", err.Error())

@@ -26,3 +26,4 @@ crawler:
   connection_retries: 8
   update_freq_min: 12
   genesis_validators_root: "4b363db94e286120d76eb905340fdd4e54bfe9f06bf33ff6cf5ad27f511bfe95"
+  fork_digest: "0xbba4da96"

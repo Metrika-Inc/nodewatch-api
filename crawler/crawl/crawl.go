@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/binary"
-	"encoding/hex"
 	"eth2-crawler/crawler/p2p"
 	reqresp "eth2-crawler/crawler/rpc/request"
 	"eth2-crawler/crawler/util"
@@ -20,7 +19,6 @@ import (
 	"eth2-crawler/utils/config"
 	uc "eth2-crawler/utils/crypto"
 	"fmt"
-	"math/rand"
 	"net"
 	"strings"
 	"sync"
@@ -33,8 +31,6 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	"github.com/protolambda/zrnt/eth2/beacon"
 	"github.com/protolambda/zrnt/eth2/beacon/common"
-	"github.com/protolambda/zrnt/eth2/configs"
-	"github.com/protolambda/ztyp/tree"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
@@ -64,35 +60,27 @@ type resolver interface {
 }
 
 // newCrawler inits new crawler service
-func newCrawler(config *config.Crawler, disc resolver, peerStore peerstore.Provider, historyStore record.Provider,
+func newCrawler(ctx context.Context, config *config.Crawler, disc resolver, peerStore peerstore.Provider, historyStore record.Provider,
 	ipResolver ipResolver.Provider, iter enode.Iterator,
 	fileOutput *output.FileOutput) *crawler {
-	root, err := hex.DecodeString(config.GenesisValidatorsRoot)
-	if err != nil {
-		log.Error("failed to decode genesis validator root", log.Ctx{"err": err})
-		panic(100)
-	}
-	var treeRoot tree.Root
-	copy(treeRoot[:], root)
 
-	host, err := newHost()
+	host, err := newHost(ctx, config.ForkDigest)
 	if err != nil {
 		log.Error("failed create new host", log.Ctx{"err": err})
 		panic(101)
 	}
 
-	gs, err := startGossipSub(context.TODO(), host)
+	gs, err := startGossipSub(ctx, host)
 	if err != nil {
 		log.Error("failed start ", log.Ctx{"err": err})
 		panic(102)
 	}
 
 	c := &crawler{
-		disc:         disc,
-		peerStore:    peerStore,
-		historyStore: historyStore,
-		ipResolver:   ipResolver,
-		// privateKey:    privateKey,
+		disc:          disc,
+		peerStore:     peerStore,
+		historyStore:  historyStore,
+		ipResolver:    ipResolver,
 		iter:          iter,
 		nodeCh:        make(chan *enode.Node),
 		host:          host,
@@ -100,12 +88,12 @@ func newCrawler(config *config.Crawler, disc resolver, peerStore peerstore.Provi
 		jobs:          make(chan *models.Peer, config.Concurrency),
 		fileOutput:    fileOutput,
 		crawlerConfig: config,
-		decoder:       beacon.NewForkDecoder(configs.Mainnet, treeRoot),
+		decoder:       config.ForkDecoder,
 	}
 	return c
 }
 
-func newHost() (p2p.Host, error) {
+func newHost(ctx context.Context, forkDigest *common.ForkDigest) (p2p.Host, error) {
 	pkey, err := crypto.GenerateKey()
 	if err != nil {
 		log.Error("failed generate key", log.Ctx{"err": err})
@@ -123,10 +111,11 @@ func newHost() (p2p.Host, error) {
 		return nil, err
 	}
 	host, err := p2p.NewHost(
-		context.Background(),
+		ctx,
+		forkDigest,
 		libp2p.Identity(cpkey),
 		libp2p.ListenAddrs(listenAddrs),
-		libp2p.UserAgent(fmt.Sprintf("Eth2-Crawler-%d", rand.Int31())),
+		libp2p.UserAgent("Eth2-Crawler"),
 		libp2p.Transport(tcp.NewTCPTransport),
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.ChainOptions(libp2p.DefaultMuxers, libp2p.Muxer(mplex.ID, mplex.DefaultTransport)),
@@ -151,11 +140,7 @@ func (c *crawler) start(ctx context.Context) {
 	for {
 		select {
 		case n := <-c.nodeCh:
-			// n, _ = enode.Parse(enode.ValidSchemes, "enr:-Ly4QFVocLxqCeH7DU8xp7wqZIYMXSRt0-IRXYL2rbwnVKIkf4hkBZi2fPBaj7NEMrSG7NEUEYEo6MoKai766-8hX20Ih2F0dG5ldHOIAMAAAAAAAACEZXRoMpC7pNqWAwAAAP__________gmlkgnY0gmlwhANZlViJc2VjcDI1NmsxoQJX3n8YarSIbLP4zi9dnyqtVOHqZEuQH2B55AbdEu7iCIhzeW5jbmV0cwCDdGNwgiMog3VkcIIjKA")
 			c.storePeer(ctx, n)
-
-			// log.Info("Stored peer, returning", log.Ctx{"peer": n.String()})
-			// return
 		case <-doneCh:
 			// crawling finished
 			log.Info("finished iterator")
@@ -163,39 +148,6 @@ func (c *crawler) start(ctx context.Context) {
 		}
 	}
 }
-
-// func (c *crawler) updateHost(ctx context.Context, wg *sync.WaitGroup) {
-// 	ticker := time.NewTicker(time.Minute * time.Duration(c.crawlerConfig.UpdateFreqMin))
-// 	// ticker := time.NewTicker(time.Minute * 1)
-// 	for {
-// 		select {
-// 		case <-ctx.Done():
-// 			ticker.Stop()
-// 			wg.Done()
-// 			return
-// 		case <-ticker.C:
-// 			c.hostLock.Lock()
-
-// 			// Close the current connections
-// 			c.host.Close()
-
-// 		net:
-// 			for {
-// 				host, err := newHost()
-// 				if err != nil {
-// 					log.Error("failed create new host", log.Ctx{"err": err})
-// 					time.Sleep(time.Second * 5)
-// 					continue
-// 				}
-// 				c.host = host
-// 				log.Info("successfully created new host")
-// 				break net
-// 			}
-// 		}
-
-// 		c.hostLock.Unlock()
-// 	}
-// }
 
 // runIterator uses the node iterator and sends node data through channel
 func (c *crawler) runIterator(ctx context.Context, doneCh chan enode.Iterator, it enode.Iterator) {
@@ -264,7 +216,7 @@ func (c *crawler) selectPendingAndExecute(ctx context.Context) {
 		return
 	}
 	for _, req := range reqs {
-		// update the pr, so it won't be picked again in 24 hours
+		// update the peer, so it won't be picked again in 24 hours
 		// We have to update the LastUpdated field here and cannot rety on the worker to update it
 		// That is because the same request will be picked again when it is in worker.
 		req.LastUpdated = time.Now().Unix()
@@ -361,19 +313,14 @@ func (c *crawler) collectNodeInfoRetryer(ctx context.Context, peer *models.Peer)
 
 			err = c.host.Connect(ctx, *peer.GetPeerInfo())
 			if err != nil {
-				// fmt.Printf("error connecting to peer, %s, %T\n", err, err)
-
 				switch t := err.(type) {
 				default:
-					fmt.Printf("unknown type %T\n", t)
+					log.Error("unknown type %T\n", t)
 				case *swarm.DialError:
-					// fmt.Printf("swarm dial error %s\n", &t.DialErrors)
-					// fmt.Println("==================================")
 					for _, e := range t.DialErrors {
-						// fmt.Printf("swarm dial error %s, timeout: %+v, type: %T, unwrap: %T\n", e.Cause, t.Timeout(), e.Cause, errors.Unwrap(e.Cause))
 						// Bit ugly but failing to negotiate security protocol is a good indicator that the node will never be able to connect
 						if strings.HasPrefix(e.Cause.Error(), "failed to negotiate security protocol") {
-							log.Debug("failed to negotiate security protocol, removing peer", peer.ID.String())
+							log.Debug("failed to negotiate security protocol, removing from DB", log.Ctx{"peer": peer.ID.String()})
 							peer.Score = models.ScoreBad
 							break
 						}
@@ -386,7 +333,7 @@ func (c *crawler) collectNodeInfoRetryer(ctx context.Context, peer *models.Peer)
 			var status *common.Status
 			status, err = c.host.FetchStatus(c.host.NewStream, ctx, peer, new(reqresp.SnappyCompression))
 			if err != nil || status == nil {
-				fmt.Printf("Non-success result fetching status, err: %s\n", err)
+				log.Debug("Non-success result fetching status", log.Ctx{"err": err})
 				continue
 			}
 			ag, err = c.host.GetAgentVersion(peer.ID)

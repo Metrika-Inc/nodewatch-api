@@ -20,7 +20,6 @@ import (
 	ipResolver "eth2-crawler/resolver"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	ic "github.com/libp2p/go-libp2p/core/crypto"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
@@ -48,7 +47,7 @@ func Initialize(ctx context.Context, wg *sync.WaitGroup, config *config.Crawler,
 		return err
 	}
 
-	c := newCrawler(config, disc, peerStore, historyStore, ipResolver, disc.RandomNodes(), fileOutput)
+	c := newCrawler(ctx, config, disc, peerStore, historyStore, ipResolver, disc.RandomNodes(), fileOutput)
 	go c.start(ctx)
 
 	// scheduler for updating peer
@@ -71,11 +70,6 @@ func Initialize(ctx context.Context, wg *sync.WaitGroup, config *config.Crawler,
 	}
 	scheduler.Start()
 	return nil
-}
-
-func convertToInterfacePrivkey(privkey *ecdsa.PrivateKey) (ic.PrivKey, error) {
-	priv, _, err := ic.ECDSAKeyPairFromKey(privkey)
-	return priv, err
 }
 
 func multiAddressBuilder(ipAddr net.IP, port int) (ma.Multiaddr, error) {

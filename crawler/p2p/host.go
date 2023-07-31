@@ -36,10 +36,10 @@ type Client struct {
 	LocalMetadata common.MetaData
 }
 
-func newClient(ctx context.Context, h host.Host, idSvc idService) *Client {
+func newClient(ctx context.Context, h host.Host, idSvc idService, forkDigest *common.ForkDigest) *Client {
 	c := &Client{
 		ctx:           ctx,
-		LocalStatus:   newLocalStatus(),
+		LocalStatus:   newLocalStatus(forkDigest),
 		LocalMetadata: newMetadata(),
 		Host:          h,
 		idSvc:         idSvc,
@@ -51,15 +51,9 @@ func newClient(ctx context.Context, h host.Host, idSvc idService) *Client {
 	return c
 }
 
-func newLocalStatus() common.Status {
-
-	// TODO: Make this dynamic
-	capella := "0xbba4da96"
-	digest := new(common.ForkDigest)
-	digest.UnmarshalText([]byte(capella))
-
+func newLocalStatus(forkDigest *common.ForkDigest) common.Status {
 	return common.Status{
-		ForkDigest:     *digest,
+		ForkDigest:     *forkDigest,
 		FinalizedRoot:  beacon.Root{},
 		FinalizedEpoch: 0,
 		HeadRoot:       beacon.Root{},
@@ -105,7 +99,7 @@ type idService interface {
 }
 
 // NewHost initializes custom host
-func NewHost(ctx context.Context, opt ...libp2p.Option) (Host, error) {
+func NewHost(ctx context.Context, forkDigest *common.ForkDigest, opt ...libp2p.Option) (Host, error) {
 	h, err := libp2p.New(opt...)
 	if err != nil {
 		return nil, err
@@ -114,7 +108,7 @@ func NewHost(ctx context.Context, opt ...libp2p.Option) (Host, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newClient(context.TODO(), h, idService), nil
+	return newClient(ctx, h, idService, forkDigest), nil
 }
 
 // IdentifyRequest performs libp2p identify request after connecting to peer.
@@ -171,14 +165,6 @@ func (c *Client) GetAgentVersion(peerID peer.ID) (string, error) {
 
 func (c *Client) FetchStatus(sFn reqresp.NewStreamFn, ctx context.Context, peer *models.Peer, comp reqresp.Compression) (
 	*beacon.Status, error) {
-	// // use the fork digest same of peer to avoid stream reset
-	// status := &beacon.Status{
-	// 	ForkDigest:     peer.ForkDigest,
-	// 	FinalizedRoot:  beacon.Root{},
-	// 	FinalizedEpoch: 0,
-	// 	HeadRoot:       beacon.Root{},
-	// 	HeadSlot:       0,
-	// }
 	resCode := reqresp.ServerErrCode // error by default
 	var data *beacon.Status
 	err := methods.StatusRPCv1.RunRequest(ctx, sFn, peer.ID, comp,
@@ -216,17 +202,17 @@ func (c *Client) ServeBeaconPing() {
 		}
 		comp := new(reqresp.SnappyCompression)
 		listenReq := func(ctx context.Context, peerId peer.ID, handler reqresp.ChunkedRequestHandler) {
-			log.Info("Handling ping request", "peer", peerId.String())
+			log.Info("Handling ping request", log.Ctx{"peer": peerId.String()})
 			var ping common.Ping
 			err := handler.ReadRequest(&ping)
 			if err != nil {
 				_ = handler.WriteErrorChunk(reqresp.InvalidReqCode, "could not parse ping request")
-				log.Trace("failed to read ping request: %v from %s", err, peerId.String())
+				log.Trace("failed to read ping request", log.Ctx{"err:": err, "peer": peerId.String()})
 			} else {
 				if err := handler.WriteResponseChunk(reqresp.SuccessCode, &ping); err != nil {
-					log.Trace("failed to respond to ping request: %v", err)
+					log.Trace("failed to respond to ping request", log.Ctx{"err:": err})
 				} else {
-					log.Trace("handled ping request", ping)
+					log.Trace("handled ping request")
 				}
 			}
 		}
@@ -249,15 +235,15 @@ func (c *Client) ServeBeaconStatus() {
 		}
 		comp := new(reqresp.SnappyCompression)
 		listenReq := func(ctx context.Context, peerId peer.ID, handler reqresp.ChunkedRequestHandler) {
-			log.Info("Handling status request from %s", peerId.String())
+			log.Info("Handling status request", log.Ctx{"peer": peerId.String()})
 			var reqStatus common.Status
 			err := handler.ReadRequest(&reqStatus)
 			if err != nil {
 				_ = handler.WriteErrorChunk(reqresp.InvalidReqCode, "could not parse status request")
-				log.Trace("failed to read status request: %v from %s", err, peerId.String())
+				log.Trace("failed to read status request", log.Ctx{"err:": err, "peer": peerId.String()})
 			} else {
 				if err := handler.WriteResponseChunk(reqresp.SuccessCode, &c.LocalStatus); err != nil {
-					log.Trace("failed to respond to status request: %v", err)
+					log.Trace("failed to respond to status request", log.Ctx{"err:": err})
 				} else {
 					// update if possible out status
 					c.UpdateStatus(reqStatus)
@@ -283,15 +269,15 @@ func (c *Client) ServeBeaconMetadata() {
 		}
 		comp := new(reqresp.SnappyCompression)
 		listenReq := func(ctx context.Context, peerId peer.ID, handler reqresp.ChunkedRequestHandler) {
-			log.Info("Handling metadata request", "peer", peerId.String())
+			log.Info("Handling metadata request", log.Ctx{"peer": peerId.String()})
 			var reqMetadata common.MetaData
 			err := handler.ReadRequest(&reqMetadata)
 			if err != nil {
 				_ = handler.WriteErrorChunk(reqresp.InvalidReqCode, "could not parse status request")
-				log.Trace("failed to read metadata request: %v from %s", err, peerId.String())
+				log.Trace("failed to read metadata request", log.Ctx{"err:": err, "peer": peerId.String()})
 			} else {
 				if err := handler.WriteResponseChunk(reqresp.SuccessCode, &c.LocalMetadata); err != nil {
-					log.Trace("failed to respond to metadata request: %v", err)
+					log.Trace("failed to respond to metadata request", log.Ctx{"err:": err})
 				} else {
 					log.Trace("handled metadata request")
 				}
