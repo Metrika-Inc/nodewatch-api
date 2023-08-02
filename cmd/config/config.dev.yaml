@@ -11,7 +11,7 @@ server:
 
 database:
   request_timeout_sec: 5
-  database: crawler
+  database: nodewatch-crawler-db
   collection: peers
   history_collection: history
 
@@ -22,7 +22,8 @@ fileOutput:
   path: "./crawler.out"
 
 crawler:
-  concurrency: 500
-  connection_retries: 5
-  update_freq_min: 240
+  concurrency: 1
+  connection_retries: 8
+  update_freq_min: 12
   genesis_validators_root: "4b363db94e286120d76eb905340fdd4e54bfe9f06bf33ff6cf5ad27f511bfe95"
+  fork_digest: "0xbba4da96"

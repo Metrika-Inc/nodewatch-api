@@ -7,15 +7,16 @@ package models
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
 	"eth2-crawler/crawler/util"
+	"eth2-crawler/utils/crypto"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/enode"
-	ic "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/protolambda/zrnt/eth2/beacon/common"
 )
@@ -169,13 +170,21 @@ type PeerOutput struct {
 
 // NewPeer initializes new peer
 func NewPeer(node *enode.Node, eth2Data *common.Eth2Data) (*Peer, error) {
-	pk := ic.PubKey((*ic.Secp256k1PublicKey)(node.Pubkey()))
-	pkByte, err := pk.Raw()
+
+	pubkey := node.Pubkey()
+	key, err := crypto.ConvertToInterfacePubkey(pubkey)
 	if err != nil {
+		fmt.Printf("error in getting pubkey from node: %v\n", err)
+		return nil, err
+	}
+	pkByte, err := key.Raw()
+	if err != nil {
+		fmt.Printf("error in getting raw pubkey: %v\n", err)
 		return nil, err
 	}
 	addr, err := util.AddrsFromEnode(node)
 	if err != nil {
+		fmt.Printf("error in getting addrs from node: %v\n", err)
 		return nil, err
 	}
 	addrStr := make([]string, 0)
@@ -341,4 +350,9 @@ func (p *Peer) Log() log.Ctx {
 		return log.Ctx{}
 	}
 	return val
+}
+
+func (p *Peer) SetForkDigest(digest common.ForkDigest) {
+	p.ForkDigest = digest
+	p.ForkDigestStr = digest.String()
 }

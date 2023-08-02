@@ -43,7 +43,7 @@ type NodeStatsOverTime struct {
 }
 
 type PeerFilter struct {
-	ForkDigest *string `json:"forkDigest"`
+	ForkDigest *string `json:"forkDigest,omitempty"`
 }
 
 type RegionalStats struct {

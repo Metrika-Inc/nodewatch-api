@@ -5,10 +5,15 @@
 package config
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
 
+	"github.com/protolambda/zrnt/eth2/beacon"
+	"github.com/protolambda/zrnt/eth2/beacon/common"
+	"github.com/protolambda/zrnt/eth2/configs"
+	"github.com/protolambda/ztyp/tree"
 	"gopkg.in/yaml.v2"
 )
 
@@ -22,10 +27,13 @@ type Configuration struct {
 }
 
 type Crawler struct {
-	Concurrency           int    `yaml:"concurrency,omitempty"`
-	ConnectionRetries     int    `yaml:"connection_retries,omitempty"`
-	UpdateFreqMin         int    `yaml:"update_freq_min,omitempty"`
-	GenesisValidatorsRoot string `yaml:"genesis_validators_root,omitempty"`
+	Concurrency           int                 `yaml:"concurrency,omitempty"`
+	ConnectionRetries     int                 `yaml:"connection_retries,omitempty"`
+	UpdateFreqMin         int                 `yaml:"update_freq_min,omitempty"`
+	GenesisValidatorsRoot string              `yaml:"genesis_validators_root,omitempty"`
+	ForkDigestStr         string              `yaml:"fork_digest,omitempty"`
+	ForkDigest            *common.ForkDigest  `yaml:"-"`
+	ForkDecoder           *beacon.ForkDecoder `yaml:"-"`
 }
 
 type FileOutput struct {
@@ -92,10 +100,34 @@ func Load(path string) (*Configuration, error) {
 		return nil, err
 	}
 
-	// cfg.Resolver.APIKey, err = loadResolverAPIKey()
-	// if err != nil {
-	// 	return nil, err
-	// }
+	// Validate the fork digest is valid
+	root, err := hex.DecodeString(cfg.Crawler.GenesisValidatorsRoot)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode genesis validator root, err: %s", err)
+	}
+
+	var treeRoot tree.Root
+	copy(treeRoot[:], root)
+	cfg.Crawler.ForkDecoder = beacon.NewForkDecoder(configs.Mainnet, treeRoot)
+
+	cfgDigest := new(common.ForkDigest)
+	cfgDigest.UnmarshalText([]byte(cfg.Crawler.ForkDigestStr))
+
+	switch *cfgDigest {
+	case cfg.Crawler.ForkDecoder.Genesis:
+		fallthrough
+	case cfg.Crawler.ForkDecoder.Altair:
+		fallthrough
+	case cfg.Crawler.ForkDecoder.Bellatrix:
+		fallthrough
+	case cfg.Crawler.ForkDecoder.Capella:
+		fallthrough
+	case cfg.Crawler.ForkDecoder.Deneb:
+		cfg.Crawler.ForkDigest = cfgDigest
+	default:
+		// Unknown fork digest
+		return nil, fmt.Errorf("unknown fork digest: %s", cfg.Crawler.ForkDigestStr)
+	}
 
 	return cfg, nil
 }

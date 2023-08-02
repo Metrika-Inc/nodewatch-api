@@ -6,26 +6,78 @@ package p2p
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"eth2-crawler/crawler/rpc/methods"
 	reqresp "eth2-crawler/crawler/rpc/request"
 	"eth2-crawler/models"
 	"fmt"
+	"time"
 
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/protolambda/zrnt/eth2/beacon/common"
 	beacon "github.com/protolambda/zrnt/eth2/beacon/common"
 
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 )
 
 // Client represent custom p2p client
 type Client struct {
+	ctx context.Context
 	host.Host
 	idSvc idService
+
+	// node's metadata in the network
+	LocalStatus   common.Status
+	LocalMetadata common.MetaData
 }
+
+func newClient(ctx context.Context, h host.Host, idSvc idService, forkDigest *common.ForkDigest) *Client {
+	c := &Client{
+		ctx:           ctx,
+		LocalStatus:   newLocalStatus(forkDigest),
+		LocalMetadata: newMetadata(),
+		Host:          h,
+		idSvc:         idSvc,
+	}
+
+	c.ServeBeaconMetadata()
+	c.ServeBeaconPing()
+	c.ServeBeaconStatus()
+	return c
+}
+
+func newLocalStatus(forkDigest *common.ForkDigest) common.Status {
+	return common.Status{
+		ForkDigest:     *forkDigest,
+		FinalizedRoot:  beacon.Root{},
+		FinalizedEpoch: 0,
+		HeadRoot:       beacon.Root{},
+		HeadSlot:       0,
+	}
+}
+
+func newMetadata() common.MetaData {
+	attnets := new(common.AttnetBits)
+	b, err := hex.DecodeString("ffffffffffffffff")
+	if err != nil {
+		log.Error("unable to decode Attnets", err.Error())
+	}
+	attnets.UnmarshalText(b)
+
+	return common.MetaData{
+		SeqNumber: 0,
+		Attnets:   *attnets,
+	}
+}
+
+const (
+	RPCTimeout time.Duration = 20 * time.Second
+)
 
 // Host represent p2p services
 type Host interface {
@@ -35,6 +87,11 @@ type Host interface {
 	GetAgentVersion(peer.ID) (string, error)
 	FetchStatus(sFn reqresp.NewStreamFn, ctx context.Context, peer *models.Peer, comp reqresp.Compression) (
 		*beacon.Status, error)
+
+	// Serve min number of endpoints we need to be a valid peer
+	ServeBeaconPing()
+	ServeBeaconStatus()
+	ServeBeaconMetadata()
 }
 
 type idService interface {
@@ -42,8 +99,8 @@ type idService interface {
 }
 
 // NewHost initializes custom host
-func NewHost(opt ...libp2p.Option) (Host, error) {
-	h, err := libp2p.New(context.Background(), opt...)
+func NewHost(ctx context.Context, forkDigest *common.ForkDigest, opt ...libp2p.Option) (Host, error) {
+	h, err := libp2p.New(opt...)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +108,7 @@ func NewHost(opt ...libp2p.Option) (Host, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Client{Host: h, idSvc: idService}, nil
+	return newClient(ctx, h, idService, forkDigest), nil
 }
 
 // IdentifyRequest performs libp2p identify request after connecting to peer.
@@ -108,18 +165,10 @@ func (c *Client) GetAgentVersion(peerID peer.ID) (string, error) {
 
 func (c *Client) FetchStatus(sFn reqresp.NewStreamFn, ctx context.Context, peer *models.Peer, comp reqresp.Compression) (
 	*beacon.Status, error) {
-	// use the fork digest same of peer to avoid stream reset
-	status := &beacon.Status{
-		ForkDigest:     peer.ForkDigest,
-		FinalizedRoot:  beacon.Root{},
-		FinalizedEpoch: 0,
-		HeadRoot:       beacon.Root{},
-		HeadSlot:       0,
-	}
 	resCode := reqresp.ServerErrCode // error by default
 	var data *beacon.Status
 	err := methods.StatusRPCv1.RunRequest(ctx, sFn, peer.ID, comp,
-		reqresp.RequestSSZInput{Obj: status}, 1,
+		reqresp.RequestSSZInput{Obj: &c.LocalStatus}, 1,
 		func() error {
 			return nil
 		},
@@ -143,4 +192,110 @@ func (c *Client) FetchStatus(sFn reqresp.NewStreamFn, ctx context.Context, peer 
 			return nil
 		})
 	return data, err
+}
+
+func (c *Client) ServeBeaconPing() {
+	go func() {
+		sCtxFn := func() context.Context {
+			reqCtx, _ := context.WithTimeout(c.ctx, RPCTimeout)
+			return reqCtx
+		}
+		comp := new(reqresp.SnappyCompression)
+		listenReq := func(ctx context.Context, peerId peer.ID, handler reqresp.ChunkedRequestHandler) {
+			log.Info("Handling ping request", log.Ctx{"peer": peerId.String()})
+			var ping common.Ping
+			err := handler.ReadRequest(&ping)
+			if err != nil {
+				_ = handler.WriteErrorChunk(reqresp.InvalidReqCode, "could not parse ping request")
+				log.Trace("failed to read ping request", log.Ctx{"err:": err, "peer": peerId.String()})
+			} else {
+				if err := handler.WriteResponseChunk(reqresp.SuccessCode, &ping); err != nil {
+					log.Trace("failed to respond to ping request", log.Ctx{"err:": err})
+				} else {
+					log.Trace("handled ping request")
+				}
+			}
+		}
+		m := methods.PingRPCv1
+		streamHandler := m.MakeStreamHandler(sCtxFn, comp, listenReq)
+		c.Host.SetStreamHandler(m.Protocol, streamHandler)
+		log.Info("Started serving ping")
+		// wait untill the ctx is down
+		<-c.ctx.Done() // TODO: do it better
+		log.Info("Stopped serving ping")
+	}()
+}
+
+func (c *Client) ServeBeaconStatus() {
+
+	go func() {
+		sCtxFn := func() context.Context {
+			reqCtx, _ := context.WithTimeout(c.ctx, RPCTimeout)
+			return reqCtx
+		}
+		comp := new(reqresp.SnappyCompression)
+		listenReq := func(ctx context.Context, peerId peer.ID, handler reqresp.ChunkedRequestHandler) {
+			log.Info("Handling status request", log.Ctx{"peer": peerId.String()})
+			var reqStatus common.Status
+			err := handler.ReadRequest(&reqStatus)
+			if err != nil {
+				_ = handler.WriteErrorChunk(reqresp.InvalidReqCode, "could not parse status request")
+				log.Trace("failed to read status request", log.Ctx{"err:": err, "peer": peerId.String()})
+			} else {
+				if err := handler.WriteResponseChunk(reqresp.SuccessCode, &c.LocalStatus); err != nil {
+					log.Trace("failed to respond to status request", log.Ctx{"err:": err})
+				} else {
+					// update if possible out status
+					c.UpdateStatus(reqStatus)
+					log.Trace("handled status request")
+				}
+			}
+		}
+		m := methods.StatusRPCv1
+		streamHandler := m.MakeStreamHandler(sCtxFn, comp, listenReq)
+		c.SetStreamHandler(m.Protocol, streamHandler)
+		log.Info("Started serving Beacon Status")
+		// wait untill the ctx is down
+		<-c.ctx.Done() // TODO: do it better
+		log.Info("Stopped serving Beacon Status")
+	}()
+}
+
+func (c *Client) ServeBeaconMetadata() {
+	go func() {
+		sCtxFn := func() context.Context {
+			reqCtx, _ := context.WithTimeout(c.ctx, RPCTimeout)
+			return reqCtx
+		}
+		comp := new(reqresp.SnappyCompression)
+		listenReq := func(ctx context.Context, peerId peer.ID, handler reqresp.ChunkedRequestHandler) {
+			log.Info("Handling metadata request", log.Ctx{"peer": peerId.String()})
+			var reqMetadata common.MetaData
+			err := handler.ReadRequest(&reqMetadata)
+			if err != nil {
+				_ = handler.WriteErrorChunk(reqresp.InvalidReqCode, "could not parse status request")
+				log.Trace("failed to read metadata request", log.Ctx{"err:": err, "peer": peerId.String()})
+			} else {
+				if err := handler.WriteResponseChunk(reqresp.SuccessCode, &c.LocalMetadata); err != nil {
+					log.Trace("failed to respond to metadata request", log.Ctx{"err:": err})
+				} else {
+					log.Trace("handled metadata request")
+				}
+			}
+		}
+		m := methods.MetaDataRPCv2
+		streamHandler := m.MakeStreamHandler(sCtxFn, comp, listenReq)
+		c.SetStreamHandler(m.Protocol, streamHandler)
+		log.Info("Started serving Beacon Metadata")
+		// wait untill the ctx is down
+		<-c.ctx.Done() // TODO: do it better
+		log.Info("Stopped serving Beacon Metadata")
+	}()
+}
+
+func (c *Client) UpdateStatus(newStatus common.Status) {
+	// check if the new one is newer than ours
+	if newStatus.HeadSlot > c.LocalStatus.HeadSlot {
+		c.LocalStatus = newStatus
+	}
 }
