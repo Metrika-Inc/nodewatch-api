@@ -136,6 +136,7 @@ type Peer struct {
 	ID     peer.ID `json:"id" bson:"_id"`
 	NodeID string  `json:"node_id" bson:"node_id"`
 	Pubkey string  `json:"pubkey" bson:"pubkey"`
+	ENR    string  `json:"enr" bson:"enr"`
 
 	IP      string   `json:"ip" bson:"ip"`
 	TCPPort int      `json:"tcp_port" bson:"tcp_port"`
@@ -211,6 +212,7 @@ func NewPeer(node *enode.Node, eth2Data *common.Eth2Data) (*Peer, error) {
 		NextForkEpoch:   Epoch(eth2Data.NextForkEpoch),
 		Attnets:         attnetsVal,
 		Score:           ScoreGood,
+		ENR:             node.String(),
 	}, nil
 }
 
