@@ -1,0 +1,20 @@
+name: Pull Request
+run-name: Pull Request
+concurrency: pr
+
+on:
+  pull_request:
+    types:
+     - opened
+     - synchronize
+     - reopened
+    branches:
+      - 'master'
+
+jobs:
+  staging:
+    uses: metrika-inc/gh-action/.github/workflows/go-test-workflow.yml@main
+    with:
+      integration-test: "FALSE"
+      unit-test: "FALSE"
+      go-version: "1.20.7"
