@@ -78,8 +78,10 @@ func (f *Output) Start(ctx context.Context, wg *sync.WaitGroup) {
 				}
 				kafkaMsgs = append(kafkaMsgs, kafka.Message{Value: outBytes})
 			}
-			if err := f.kafkaWriter.WriteMessages(ctx, kafkaMsgs...); err != nil {
-				log.Warn("failed to write to kafka", log.Ctx{"error": err})
+			if f.kafkaWriter != nil {
+				if err := f.kafkaWriter.WriteMessages(ctx, kafkaMsgs...); err != nil {
+					log.Warn("failed to write to kafka", log.Ctx{"error": err})
+				}
 			}
 			f.fileWriter.Flush()
 			f.file.Sync()
@@ -91,8 +93,10 @@ func (f *Output) Start(ctx context.Context, wg *sync.WaitGroup) {
 			if _, err := f.fileWriter.Write(append(outBytes, byte('\n'))); err != nil {
 				log.Warn("failed to write to file", log.Ctx{"error": err})
 			}
-			if err := f.kafkaWriter.WriteMessages(ctx, kafka.Message{Value: outBytes}); err != nil {
-				log.Warn("failed to write to kafka", log.Ctx{"error": err})
+			if f.kafkaWriter == nil {
+				if err := f.kafkaWriter.WriteMessages(ctx, kafka.Message{Value: outBytes}); err != nil {
+					log.Warn("failed to write to kafka", log.Ctx{"error": err})
+				}
 			}
 		}
 	}
