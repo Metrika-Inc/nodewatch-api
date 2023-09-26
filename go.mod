@@ -19,6 +19,7 @@ require (
 	github.com/protolambda/ztyp v0.2.2
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/rs/cors v1.9.0
+	github.com/segmentio/kafka-go v0.4.43
 	github.com/stretchr/testify v1.8.2
 	github.com/vektah/gqlparser/v2 v2.5.6
 	go.mongodb.org/mongo-driver v1.12.0
@@ -93,6 +94,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.11.0 // indirect
 	github.com/opencontainers/runtime-spec v1.0.2 // indirect
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
+	github.com/pierrec/lz4/v4 v4.1.15 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.16.0 // indirect
 	github.com/prometheus/client_model v0.4.0 // indirect

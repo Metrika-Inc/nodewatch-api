@@ -62,7 +62,10 @@ func main() {
 	// }
 
 	fOutputChan := make(chan interface{}, cfg.Crawler.Concurrency)
-	fOutput, err := output.New(cfg.FileOutput.Path, fOutputChan)
+	fOutput, err := output.New(cfg.FileOutput.Path, &output.KafkaConfig{
+		BootstrapServers: cfg.Kafka.BootstrapServers,
+		Topic:            cfg.Kafka.Topic,
+		Timeout:          cfg.Kafka.Timeout}, fOutputChan)
 	if err != nil {
 		log.Fatalf("error Initializing the file output: %s", err.Error())
 	}
