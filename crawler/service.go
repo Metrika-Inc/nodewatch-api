@@ -20,7 +20,7 @@ import (
 )
 
 // Start starts the crawler service
-func Start(ctx context.Context, wg *sync.WaitGroup, config *config.Crawler, peerStore peerstore.Provider, historyStore record.Provider, ipResolver ipResolver.Provider, fileOutput *output.FileOutput) {
+func Start(ctx context.Context, wg *sync.WaitGroup, config *config.Crawler, peerStore peerstore.Provider, historyStore record.Provider, ipResolver ipResolver.Provider, fileOutput *output.Output) {
 	h := log.CallerFileHandler(log.StdoutHandler)
 	log.Root().SetHandler(h)
 

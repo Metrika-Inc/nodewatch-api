@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/protolambda/zrnt/eth2/beacon"
 	"github.com/protolambda/zrnt/eth2/beacon/common"
@@ -17,6 +19,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const KafkaDefaultTimeout = 10 * time.Second
+
 // Configuration holds data necessary for configuring application
 type Configuration struct {
 	Server     *Server     `yaml:"server,omitempty"`
@@ -24,6 +28,7 @@ type Configuration struct {
 	Resolver   *Resolver   `yaml:"resolver,omitempty"`
 	FileOutput *FileOutput `yaml:"fileOutput,omitempty"`
 	Crawler    *Crawler    `yaml:"crawler,omitempty"`
+	Kafka      *Kafka      `yaml:"kafka,omitempty"`
 }
 
 type Crawler struct {
@@ -64,6 +69,13 @@ type Resolver struct {
 	Timeout int    `yaml:"request_timeout_sec"`
 }
 
+type Kafka struct {
+	Topic               string        `yaml:"topic,omitempty"`
+	BootstrapServersStr string        `yaml:"bootstrap_servers,omitempty"`
+	BootstrapServers    []string      `yaml:"-"`
+	Timeout             time.Duration `yaml:"timeout,omitempty"`
+}
+
 func loadDatabaseURI() (string, error) {
 	mongoURI := os.Getenv("MONGODB_URI")
 	if mongoURI == "" {
@@ -92,6 +104,13 @@ func Load(path string) (*Configuration, error) {
 
 	if err = yaml.Unmarshal(bytes, cfg); err != nil {
 		return nil, fmt.Errorf("unable to decode into struct, %w", err)
+	}
+
+	if cfg.Kafka != nil {
+		cfg.Kafka.BootstrapServers = strings.Split(cfg.Kafka.BootstrapServersStr, ",")
+		if cfg.Kafka.Timeout == 0 {
+			cfg.Kafka.Timeout = KafkaDefaultTimeout
+		}
 	}
 
 	// load envs

@@ -49,7 +49,7 @@ type crawler struct {
 	host          p2p.Host
 	pubSub        *pubsub.PubSub
 	jobs          chan *models.Peer
-	fileOutput    *output.FileOutput
+	fileOutput    *output.Output
 	decoder       *beacon.ForkDecoder
 	hostLock      sync.RWMutex
 }
@@ -62,7 +62,7 @@ type resolver interface {
 // newCrawler inits new crawler service
 func newCrawler(ctx context.Context, config *config.Crawler, disc resolver, peerStore peerstore.Provider, historyStore record.Provider,
 	ipResolver ipResolver.Provider, iter enode.Iterator,
-	fileOutput *output.FileOutput) *crawler {
+	fileOutput *output.Output) *crawler {
 
 	host, err := newHost(ctx, config.ForkDigest)
 	if err != nil {

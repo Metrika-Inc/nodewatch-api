@@ -33,7 +33,7 @@ type listenConfig struct {
 }
 
 // Initialize initializes the core crawler component
-func Initialize(ctx context.Context, wg *sync.WaitGroup, config *config.Crawler, peerStore peerstore.Provider, historyStore record.Provider, ipResolver ipResolver.Provider, bootNodeAddrs []string, fileOutput *output.FileOutput) error {
+func Initialize(ctx context.Context, wg *sync.WaitGroup, config *config.Crawler, peerStore peerstore.Provider, historyStore record.Provider, ipResolver ipResolver.Provider, bootNodeAddrs []string, fileOutput *output.Output) error {
 	pkey, _ := crypto.GenerateKey()
 	listenCfg := &listenConfig{
 		bootNodeAddrs: bootNodeAddrs,
