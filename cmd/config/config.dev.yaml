@@ -28,6 +28,6 @@ crawler:
   genesis_validators_root: "4b363db94e286120d76eb905340fdd4e54bfe9f06bf33ff6cf5ad27f511bfe95"
   fork_digest: "0xbba4da96"
 kafka:
-  topic: "eth_nodewatch_api_network_crawler"
+  topic: "slurp_ext_eth_mainnet_nodewatch_api_network_crawler"
   bootstrap_servers: "kafka:9092"
   timeout: 10s
