@@ -11,12 +11,12 @@ import (
 	"eth2-crawler/crawler/rpc/methods"
 	reqresp "eth2-crawler/crawler/rpc/request"
 	"eth2-crawler/models"
+	"eth2-crawler/utils/fork"
 	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/protolambda/zrnt/eth2/beacon/common"
-	beacon "github.com/protolambda/zrnt/eth2/beacon/common"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -34,12 +34,14 @@ type Client struct {
 	// node's metadata in the network
 	LocalStatus   common.Status
 	LocalMetadata common.MetaData
+	ForkChoice    *fork.ForkChoice
 }
 
-func newClient(ctx context.Context, h host.Host, idSvc idService, forkDigest *common.ForkDigest) *Client {
+func newClient(ctx context.Context, h host.Host, idSvc idService, forkChoice *fork.ForkChoice) *Client {
 	c := &Client{
 		ctx:           ctx,
-		LocalStatus:   newLocalStatus(forkDigest),
+		LocalStatus:   newLocalStatus(forkChoice.Fork()),
+		ForkChoice:    forkChoice,
 		LocalMetadata: newMetadata(),
 		Host:          h,
 		idSvc:         idSvc,
@@ -51,12 +53,12 @@ func newClient(ctx context.Context, h host.Host, idSvc idService, forkDigest *co
 	return c
 }
 
-func newLocalStatus(forkDigest *common.ForkDigest) common.Status {
+func newLocalStatus(forkDigest common.ForkDigest) common.Status {
 	return common.Status{
-		ForkDigest:     *forkDigest,
-		FinalizedRoot:  beacon.Root{},
+		ForkDigest:     forkDigest,
+		FinalizedRoot:  common.Root{},
 		FinalizedEpoch: 0,
-		HeadRoot:       beacon.Root{},
+		HeadRoot:       common.Root{},
 		HeadSlot:       0,
 	}
 }
@@ -86,7 +88,7 @@ type Host interface {
 	GetProtocolVersion(peer.ID) (string, error)
 	GetAgentVersion(peer.ID) (string, error)
 	FetchStatus(sFn reqresp.NewStreamFn, ctx context.Context, peer *models.Peer, comp reqresp.Compression) (
-		*beacon.Status, error)
+		*common.Status, error)
 
 	// Serve min number of endpoints we need to be a valid peer
 	ServeBeaconPing()
@@ -99,7 +101,7 @@ type idService interface {
 }
 
 // NewHost initializes custom host
-func NewHost(ctx context.Context, forkDigest *common.ForkDigest, opt ...libp2p.Option) (Host, error) {
+func NewHost(ctx context.Context, forkChoice *fork.ForkChoice, opt ...libp2p.Option) (Host, error) {
 	h, err := libp2p.New(opt...)
 	if err != nil {
 		return nil, err
@@ -108,7 +110,7 @@ func NewHost(ctx context.Context, forkDigest *common.ForkDigest, opt ...libp2p.O
 	if err != nil {
 		return nil, err
 	}
-	return newClient(ctx, h, idService, forkDigest), nil
+	return newClient(ctx, h, idService, forkChoice), nil
 }
 
 // IdentifyRequest performs libp2p identify request after connecting to peer.
@@ -164,9 +166,10 @@ func (c *Client) GetAgentVersion(peerID peer.ID) (string, error) {
 }
 
 func (c *Client) FetchStatus(sFn reqresp.NewStreamFn, ctx context.Context, peer *models.Peer, comp reqresp.Compression) (
-	*beacon.Status, error) {
+	*common.Status, error) {
 	resCode := reqresp.ServerErrCode // error by default
-	var data *beacon.Status
+	var data *common.Status
+
 	err := methods.StatusRPCv1.RunRequest(ctx, sFn, peer.ID, comp,
 		reqresp.RequestSSZInput{Obj: &c.LocalStatus}, 1,
 		func() error {
@@ -181,7 +184,7 @@ func (c *Client) FetchStatus(sFn reqresp.NewStreamFn, ctx context.Context, peer 
 					return fmt.Errorf("%s: %w", msg, err)
 				}
 			case reqresp.SuccessCode:
-				var stat beacon.Status
+				var stat common.Status
 				if err := chunk.ReadObj(&stat); err != nil {
 					return err
 				}

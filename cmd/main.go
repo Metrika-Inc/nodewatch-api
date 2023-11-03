@@ -8,24 +8,17 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 
 	"eth2-crawler/crawler"
-	"eth2-crawler/graph"
-	"eth2-crawler/graph/generated"
 	"eth2-crawler/output"
 	"eth2-crawler/resolver/ipmapper"
 	peerStore "eth2-crawler/store/peerstore/mongo"
 	recordStore "eth2-crawler/store/record/mongo"
 	"eth2-crawler/utils/config"
-	"eth2-crawler/utils/server"
-
-	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/99designs/gqlgen/graphql/playground"
 )
 
 func main() {
@@ -70,20 +63,20 @@ func main() {
 		log.Fatalf("error Initializing the file output: %s", err.Error())
 	}
 
-	go crawler.Start(ctx, &wg, cfg.Crawler, peerStore, historyStore, resolverService, fOutput)
+	go crawler.Start(ctx, &wg, cfg, peerStore, historyStore, resolverService, fOutput)
 
-	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: graph.NewResolver(peerStore, historyStore)}))
+	// srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: graph.NewResolver(peerStore, historyStore)}))
 
-	router := http.NewServeMux()
-	// TODO: make playground accessible only in Dev mode
-	router.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	router.Handle("/query", srv)
-	// TODO: setup proper status handler
-	router.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "{ \"status\": \"up\" }")
-	})
+	// router := http.NewServeMux()
+	// // TODO: make playground accessible only in Dev mode
+	// router.Handle("/", playground.Handler("GraphQL playground", "/query"))
+	// router.Handle("/query", srv)
+	// // TODO: setup proper status handler
+	// router.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
+	// 	fmt.Fprintf(w, "{ \"status\": \"up\" }")
+	// })
 
-	server.Start(ctx, cfg.Server, router)
+	// server.Start(ctx, cfg.Server, router)
 
 	// Block until terminate called
 	<-exit

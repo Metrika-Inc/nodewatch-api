@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/protolambda/zrnt/eth2/beacon"
-	"github.com/protolambda/zrnt/eth2/beacon/common"
 	"github.com/protolambda/zrnt/eth2/configs"
 	"github.com/protolambda/ztyp/tree"
 	"gopkg.in/yaml.v2"
@@ -29,16 +28,19 @@ type Configuration struct {
 	FileOutput *FileOutput `yaml:"fileOutput,omitempty"`
 	Crawler    *Crawler    `yaml:"crawler,omitempty"`
 	Kafka      *Kafka      `yaml:"kafka,omitempty"`
+	Fork       *Fork       `yaml:"fork,omitempty"`
 }
 
 type Crawler struct {
-	Concurrency           int                 `yaml:"concurrency,omitempty"`
-	ConnectionRetries     int                 `yaml:"connection_retries,omitempty"`
-	UpdateFreqMin         int                 `yaml:"update_freq_min,omitempty"`
-	GenesisValidatorsRoot string              `yaml:"genesis_validators_root,omitempty"`
-	ForkDigestStr         string              `yaml:"fork_digest,omitempty"`
-	ForkDigest            *common.ForkDigest  `yaml:"-"`
-	ForkDecoder           *beacon.ForkDecoder `yaml:"-"`
+	Concurrency           int    `yaml:"concurrency,omitempty"`
+	ConnectionRetries     int    `yaml:"connection_retries,omitempty"`
+	UpdateFreqMin         int    `yaml:"update_freq_min,omitempty"`
+	GenesisValidatorsRoot string `yaml:"genesis_validators_root,omitempty"`
+	GenesisTime           int64  `yaml:"genesis_time,omitempty"`
+	SecondsPerSlot        int64  `yaml:"seconds_per_slot,omitempty"`
+	SlotsPerEpoch         int64  `yaml:"slots_per_epoch,omitempty"`
+
+	ForkDecoder *beacon.ForkDecoder `yaml:"-"`
 }
 
 type FileOutput struct {
@@ -74,6 +76,19 @@ type Kafka struct {
 	BootstrapServersStr string        `yaml:"bootstrap_servers,omitempty"`
 	BootstrapServers    []string      `yaml:"-"`
 	Timeout             time.Duration `yaml:"timeout,omitempty"`
+}
+
+type ForkConfig struct {
+	Supported  bool   `yaml:"supported,omitempty"`
+	ForkDigest string `yaml:"fork_digest,omitempty"`
+	ForkEpoch  int64  `yaml:"fork_epoch,omitempty"`
+}
+type Fork struct {
+	Genesis   ForkConfig `yaml:"genesis,omitempty"`
+	Altair    ForkConfig `yaml:"altair,omitempty"`
+	Bellatrix ForkConfig `yaml:"bell,omitempty"`
+	Capella   ForkConfig `yaml:"capella,omitempty"`
+	Deneb     ForkConfig `yaml:"deneb,omitempty"`
 }
 
 func loadDatabaseURI() (string, error) {
@@ -119,34 +134,42 @@ func Load(path string) (*Configuration, error) {
 		return nil, err
 	}
 
-	// Validate the fork digest is valid
+	err = loadForkDefaults(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
+func loadForkDefaults(cfg *Configuration) error {
+
 	root, err := hex.DecodeString(cfg.Crawler.GenesisValidatorsRoot)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode genesis validator root, err: %s", err)
+		return fmt.Errorf("failed to decode genesis validator root, err: %s", err)
 	}
 
 	var treeRoot tree.Root
 	copy(treeRoot[:], root)
 	cfg.Crawler.ForkDecoder = beacon.NewForkDecoder(configs.Mainnet, treeRoot)
 
-	cfgDigest := new(common.ForkDigest)
-	cfgDigest.UnmarshalText([]byte(cfg.Crawler.ForkDigestStr))
+	// Populate the fork digest if not set but supported
 
-	switch *cfgDigest {
-	case cfg.Crawler.ForkDecoder.Genesis:
-		fallthrough
-	case cfg.Crawler.ForkDecoder.Altair:
-		fallthrough
-	case cfg.Crawler.ForkDecoder.Bellatrix:
-		fallthrough
-	case cfg.Crawler.ForkDecoder.Capella:
-		fallthrough
-	case cfg.Crawler.ForkDecoder.Deneb:
-		cfg.Crawler.ForkDigest = cfgDigest
-	default:
-		// Unknown fork digest
-		return nil, fmt.Errorf("unknown fork digest: %s", cfg.Crawler.ForkDigestStr)
+	if cfg.Fork.Altair.ForkDigest == "" && cfg.Fork.Altair.Supported {
+		cfg.Fork.Altair.ForkDigest = cfg.Crawler.ForkDecoder.Altair.String()
+		cfg.Fork.Altair.ForkEpoch = int64(cfg.Crawler.ForkDecoder.Spec.ALTAIR_FORK_EPOCH)
 	}
-
-	return cfg, nil
+	if cfg.Fork.Bellatrix.ForkDigest == "" {
+		cfg.Fork.Bellatrix.ForkDigest = cfg.Crawler.ForkDecoder.Bellatrix.String()
+		cfg.Fork.Bellatrix.ForkEpoch = int64(cfg.Crawler.ForkDecoder.Spec.BELLATRIX_FORK_EPOCH)
+	}
+	if cfg.Fork.Capella.ForkDigest == "" {
+		cfg.Fork.Capella.ForkDigest = cfg.Crawler.ForkDecoder.Capella.String()
+		cfg.Fork.Capella.ForkEpoch = int64(cfg.Crawler.ForkDecoder.Spec.CAPELLA_FORK_EPOCH)
+	}
+	if cfg.Fork.Deneb.ForkDigest == "" {
+		cfg.Fork.Deneb.ForkDigest = cfg.Crawler.ForkDecoder.Deneb.String()
+		cfg.Fork.Deneb.ForkEpoch = int64(cfg.Crawler.ForkDecoder.Spec.DENEB_FORK_EPOCH)
+	}
+	return nil
 }

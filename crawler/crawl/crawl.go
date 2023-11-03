@@ -18,6 +18,7 @@ import (
 	"eth2-crawler/store/record"
 	"eth2-crawler/utils/config"
 	uc "eth2-crawler/utils/crypto"
+	"eth2-crawler/utils/fork"
 	"fmt"
 	"net"
 	"strings"
@@ -29,7 +30,6 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/net/swarm"
 	noise "github.com/libp2p/go-libp2p/p2p/security/noise"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
-	"github.com/protolambda/zrnt/eth2/beacon"
 	"github.com/protolambda/zrnt/eth2/beacon/common"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -50,8 +50,9 @@ type crawler struct {
 	pubSub        *pubsub.PubSub
 	jobs          chan *models.Peer
 	fileOutput    *output.Output
-	decoder       *beacon.ForkDecoder
-	hostLock      sync.RWMutex
+	// decoder       *beacon.ForkDecoder
+	fockChoice *fork.ForkChoice
+	hostLock   sync.RWMutex
 }
 
 // resolver holds methods of discovery v5
@@ -62,9 +63,9 @@ type resolver interface {
 // newCrawler inits new crawler service
 func newCrawler(ctx context.Context, config *config.Crawler, disc resolver, peerStore peerstore.Provider, historyStore record.Provider,
 	ipResolver ipResolver.Provider, iter enode.Iterator,
-	fileOutput *output.Output) *crawler {
+	fileOutput *output.Output, forkChoice *fork.ForkChoice) *crawler {
 
-	host, err := newHost(ctx, config.ForkDigest)
+	host, err := newHost(ctx, forkChoice)
 	if err != nil {
 		log.Error("failed create new host", log.Ctx{"err": err})
 		panic(101)
@@ -88,12 +89,13 @@ func newCrawler(ctx context.Context, config *config.Crawler, disc resolver, peer
 		jobs:          make(chan *models.Peer, config.Concurrency),
 		fileOutput:    fileOutput,
 		crawlerConfig: config,
-		decoder:       config.ForkDecoder,
+		// decoder:       config.ForkDecoder,
+		fockChoice: forkChoice,
 	}
 	return c
 }
 
-func newHost(ctx context.Context, forkDigest *common.ForkDigest) (p2p.Host, error) {
+func newHost(ctx context.Context, forkChoice *fork.ForkChoice) (p2p.Host, error) {
 	pkey, err := crypto.GenerateKey()
 	if err != nil {
 		log.Error("failed generate key", log.Ctx{"err": err})
@@ -112,7 +114,7 @@ func newHost(ctx context.Context, forkDigest *common.ForkDigest) (p2p.Host, erro
 	}
 	host, err := p2p.NewHost(
 		ctx,
-		forkDigest,
+		forkChoice,
 		libp2p.Identity(cpkey),
 		libp2p.ListenAddrs(listenAddrs),
 		libp2p.UserAgent("Eth2-Crawler"),
@@ -172,7 +174,7 @@ func (c *crawler) storePeer(ctx context.Context, node *enode.Node) {
 		return
 	}
 
-	if eth2Data.ForkDigest == c.decoder.Capella {
+	if eth2Data.ForkDigest == c.fockChoice.Fork() {
 		log.Debug("found a eth2 node", log.Ctx{"node": node})
 		// get basic info
 		peer, err := models.NewPeer(node, eth2Data)

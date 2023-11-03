@@ -10,7 +10,9 @@ import (
 	"eth2-crawler/output"
 	"eth2-crawler/store/peerstore"
 	"eth2-crawler/store/record"
+	clock "eth2-crawler/utils/clock"
 	"eth2-crawler/utils/config"
+	fork "eth2-crawler/utils/fork"
 	"fmt"
 	"net"
 	"sync"
@@ -33,7 +35,7 @@ type listenConfig struct {
 }
 
 // Initialize initializes the core crawler component
-func Initialize(ctx context.Context, wg *sync.WaitGroup, config *config.Crawler, peerStore peerstore.Provider, historyStore record.Provider, ipResolver ipResolver.Provider, bootNodeAddrs []string, fileOutput *output.Output) error {
+func Initialize(ctx context.Context, wg *sync.WaitGroup, config *config.Configuration, peerStore peerstore.Provider, historyStore record.Provider, ipResolver ipResolver.Provider, bootNodeAddrs []string, fileOutput *output.Output) error {
 	pkey, _ := crypto.GenerateKey()
 	listenCfg := &listenConfig{
 		bootNodeAddrs: bootNodeAddrs,
@@ -47,7 +49,10 @@ func Initialize(ctx context.Context, wg *sync.WaitGroup, config *config.Crawler,
 		return err
 	}
 
-	c := newCrawler(ctx, config, disc, peerStore, historyStore, ipResolver, disc.RandomNodes(), fileOutput)
+	slotClock := clock.NewClock(config.Crawler.GenesisTime, config.Crawler.SecondsPerSlot, config.Crawler.SlotsPerEpoch)
+	forkChoice := fork.NewForkChoice(ctx, slotClock, config.Fork)
+
+	c := newCrawler(ctx, config.Crawler, disc, peerStore, historyStore, ipResolver, disc.RandomNodes(), fileOutput, forkChoice)
 	go c.start(ctx)
 
 	// scheduler for updating peer
