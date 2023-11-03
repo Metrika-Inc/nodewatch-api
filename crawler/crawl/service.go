@@ -63,10 +63,6 @@ func Initialize(ctx context.Context, wg *sync.WaitGroup, config *config.Configur
 	wg.Add(1)
 	go c.fileOutput.Start(ctx, wg)
 
-	// // Begin host refresh time
-	// wg.Add(1)
-	// go c.updateHost(ctx, wg)
-
 	// add scheduler for updating history store
 	scheduler := cron.New()
 	_, err = scheduler.AddFunc("@daily", c.insertToHistory)

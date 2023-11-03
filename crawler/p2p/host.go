@@ -170,6 +170,9 @@ func (c *Client) FetchStatus(sFn reqresp.NewStreamFn, ctx context.Context, peer 
 	resCode := reqresp.ServerErrCode // error by default
 	var data *common.Status
 
+	// Update localStatus before sending
+	c.LocalStatus.ForkDigest = c.ForkChoice.Fork()
+
 	err := methods.StatusRPCv1.RunRequest(ctx, sFn, peer.ID, comp,
 		reqresp.RequestSSZInput{Obj: &c.LocalStatus}, 1,
 		func() error {

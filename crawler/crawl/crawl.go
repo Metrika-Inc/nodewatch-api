@@ -50,9 +50,8 @@ type crawler struct {
 	pubSub        *pubsub.PubSub
 	jobs          chan *models.Peer
 	fileOutput    *output.Output
-	// decoder       *beacon.ForkDecoder
-	fockChoice *fork.ForkChoice
-	hostLock   sync.RWMutex
+	fockChoice    *fork.ForkChoice
+	hostLock      sync.RWMutex
 }
 
 // resolver holds methods of discovery v5
@@ -89,8 +88,7 @@ func newCrawler(ctx context.Context, config *config.Crawler, disc resolver, peer
 		jobs:          make(chan *models.Peer, config.Concurrency),
 		fileOutput:    fileOutput,
 		crawlerConfig: config,
-		// decoder:       config.ForkDecoder,
-		fockChoice: forkChoice,
+		fockChoice:    forkChoice,
 	}
 	return c
 }
