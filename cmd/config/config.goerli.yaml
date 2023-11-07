@@ -21,11 +21,11 @@ fileOutput:
 crawler:
   concurrency: 1
   connection_retries: 8
-  update_freq_min: 2
-  genesis_validators_root: "4b363db94e286120d76eb905340fdd4e54bfe9f06bf33ff6cf5ad27f511bfe95"
-  genesis_time: 1699314915
+  update_freq_min: 480
+  genesis_validators_root: "043db0d9a83813551ee2f33450d23797757d430911a9320530ad8a0eabc43efb"
+  genesis_time: 1616508000
   seconds_per_slot: 12
-  slots_per_epoch: 6
+  slots_per_epoch: 32
 
 # Leave digest blank for automatic generation (must have correct genesis validators root)
 fork:
@@ -35,15 +35,9 @@ fork:
     supported: false
   capella:
     supported: true
-    fork_digest: "8c910628"
-    fork_epoch: 0
   deneb:
     supported: true
-    fork_digest: "5af31293"
-    fork_epoch: 2
 
 network:
   # mainnet | goerli | sepolia | custom
-  name: custom
-  bootnodes:
-   - enr:-MK4QO5iZFGSJ7GWH5134c7rPTdr8SiRMo3qZf3Fc-la_c0WE5IukP5oGacgX95MhQVWsGFKGRw20EIgVAI0vKErD-WGAYunD270h2F0dG5ldHOIAAAAAAAAAACEZXRoMpCMkQYoIAAAkgIAAAAAAAAAgmlkgnY0gmlwhKwaAAOJc2VjcDI1NmsxoQIWRkMsnAg2N9f72TdyxMbYlSa7Ly-O2Yvswp6F2ZqsdYhzeW5jbmV0cwCDdGNwgjLIg3VkcIIu4A
+  name: goerli

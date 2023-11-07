@@ -18,7 +18,7 @@ RUN env GOOS=linux GOARCH=amd64 go build -o /crawler cmd/main.go
 FROM alpine:3.14.0
 
 RUN apk add build-base
-ARG env=local
+ARG env=goerli
 
 RUN apk add curl
 COPY --from=builder /crawler /

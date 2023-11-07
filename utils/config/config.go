@@ -7,11 +7,13 @@ package config
 import (
 	"encoding/hex"
 	"errors"
+	"eth2-crawler/cmd/network"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/protolambda/zrnt/eth2/beacon"
 	"github.com/protolambda/zrnt/eth2/configs"
 	"github.com/protolambda/ztyp/tree"
@@ -157,7 +159,19 @@ func loadForkDefaults(cfg *Configuration) error {
 
 	var treeRoot tree.Root
 	copy(treeRoot[:], root)
-	cfg.Crawler.ForkDecoder = beacon.NewForkDecoder(configs.Mainnet, treeRoot)
+
+	switch cfg.Network.Name {
+	case "mainnet":
+		cfg.Crawler.ForkDecoder = beacon.NewForkDecoder(configs.Mainnet, treeRoot)
+	case "goerli":
+		cfg.Crawler.ForkDecoder = beacon.NewForkDecoder(network.Goerli, treeRoot)
+
+		fmt.Println("Using goerli fork decoder")
+		fmt.Println(cfg.Crawler.ForkDecoder.Capella.String())
+
+	default:
+		log.Warn("no network specified, using configured epochs and fork digests")
+	}
 
 	// Populate the fork digest if not set but supported
 

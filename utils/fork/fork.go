@@ -72,19 +72,23 @@ func (f *ForkChoice) getForkForEpoch(epoch int64) *common.ForkDigest {
 	digest := new(common.ForkDigest)
 
 	// fmt.Printf("epoch: %d\n", epoch)
-	// fmt.Printf("capellaEpoch: %d supported: %v\n", f.ForkConfig.Capella.ForkEpoch, f.ForkConfig.Capella.Supported)
+	// fmt.Printf("capellaEpoch: %d supported: %v, digest: %s\n", f.ForkConfig.Capella.ForkEpoch, f.ForkConfig.Capella.Supported, f.ForkConfig.Capella.ForkDigest)
 	// fmt.Printf("denebEpoch: %d supported: %v\n", f.ForkConfig.Deneb.ForkEpoch, f.ForkConfig.Deneb.Supported)
 
 	if f.currentEpoch >= f.ForkConfig.Deneb.ForkEpoch && f.ForkConfig.Deneb.Supported {
+		fmt.Println("Setting denb digest")
 		digest.UnmarshalText([]byte(f.ForkConfig.Deneb.ForkDigest))
 	} else if f.currentEpoch >= f.ForkConfig.Capella.ForkEpoch && f.ForkConfig.Capella.Supported {
+		fmt.Println("Setting capella digest")
 		digest.UnmarshalText([]byte(f.ForkConfig.Capella.ForkDigest))
 	} else if f.currentEpoch >= f.ForkConfig.Bellatrix.ForkEpoch && f.ForkConfig.Bellatrix.Supported {
+		fmt.Println("Setting bellatrix digest")
 		digest.UnmarshalText([]byte(f.ForkConfig.Bellatrix.ForkDigest))
 	} else if f.currentEpoch >= f.ForkConfig.Altair.ForkEpoch && f.ForkConfig.Altair.Supported {
+		fmt.Println("Setting altair digest")
 		digest.UnmarshalText([]byte(f.ForkConfig.Altair.ForkDigest))
 	}
-	// fmt.Printf("Epoch: %d, Digest: %s\n", epoch, digest.String())
+	fmt.Printf("Epoch: %d, Digest: %s\n", epoch, digest.String())
 
 	return digest
 }
