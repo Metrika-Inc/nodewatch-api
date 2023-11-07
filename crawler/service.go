@@ -38,6 +38,8 @@ func Start(ctx context.Context, wg *sync.WaitGroup, config *config.Configuration
 		bootNodes = params.SepoliaBootnodes
 	case "custom":
 		bootNodes = config.Network.Bootnodes
+	default:
+		panic("invalid network name, must be one of mainnet, goerli, sepolia, custom")
 	}
 
 	err := crawl.Initialize(ctx, wg, config, peerStore, historyStore, ipResolver, bootNodes, fileOutput)
