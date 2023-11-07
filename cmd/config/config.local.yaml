@@ -21,19 +21,13 @@ fileOutput:
 crawler:
   concurrency: 1
   connection_retries: 8
-  update_freq_min: 12
+  update_freq_min: 2
   genesis_validators_root: "4b363db94e286120d76eb905340fdd4e54bfe9f06bf33ff6cf5ad27f511bfe95"
-  genesis_time: 1631215200
+  genesis_time: 1699314915
   seconds_per_slot: 12
-  slots_per_epoch: 32
-  # fork_digest: "0xbba4da96"
+  slots_per_epoch: 6
 
-kafka:
-  topic: "slurp_ext_eth_mainnet_nodewatch_api_network_crawler"
-  bootstrap_servers: "kafka:9092"
-  timeout: 10s
-
-# Leave digest blank for mainnet
+# Leave digest blank for automatic generation (must have correct genesis validators root)
 fork:
   altair:
     supported: false
@@ -44,6 +38,12 @@ fork:
     fork_digest: "8c910628"
     fork_epoch: 0
   deneb:
-    supported: false
+    supported: true
     fork_digest: "5af31293"
-    fork_epoch: 4
+    fork_epoch: 2
+
+network:
+  # mainnet | georli | sepolia | custom
+  name: custom
+  bootnodes:
+   - enr:-MK4QO5iZFGSJ7GWH5134c7rPTdr8SiRMo3qZf3Fc-la_c0WE5IukP5oGacgX95MhQVWsGFKGRw20EIgVAI0vKErD-WGAYunD270h2F0dG5ldHOIAAAAAAAAAACEZXRoMpCMkQYoIAAAkgIAAAAAAAAAgmlkgnY0gmlwhKwaAAOJc2VjcDI1NmsxoQIWRkMsnAg2N9f72TdyxMbYlSa7Ly-O2Yvswp6F2ZqsdYhzeW5jbmV0cwCDdGNwgjLIg3VkcIIu4A

@@ -15,7 +15,6 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/log"
-
 	"github.com/ethereum/go-ethereum/params"
 )
 
@@ -29,7 +28,19 @@ func Start(ctx context.Context, wg *sync.WaitGroup, config *config.Configuration
 	)
 	log.Root().SetHandler(handler)
 
-	err := crawl.Initialize(ctx, wg, config, peerStore, historyStore, ipResolver, params.V5Bootnodes, fileOutput)
+	bootNodes := []string{}
+	switch config.Network.Name {
+	case "mainnet":
+		bootNodes = params.V5Bootnodes
+	case "goerli":
+		bootNodes = params.GoerliBootnodes
+	case "sepolia":
+		bootNodes = params.SepoliaBootnodes
+	case "custom":
+		bootNodes = config.Network.Bootnodes
+	}
+
+	err := crawl.Initialize(ctx, wg, config, peerStore, historyStore, ipResolver, bootNodes, fileOutput)
 	if err != nil {
 		panic(err)
 	}

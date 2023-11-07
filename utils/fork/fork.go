@@ -4,9 +4,11 @@ import (
 	"context"
 	clock "eth2-crawler/utils/clock"
 	config "eth2-crawler/utils/config"
+	"fmt"
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/protolambda/zrnt/eth2/beacon/common"
 )
 
@@ -54,8 +56,11 @@ func (f *ForkChoice) monitorForkChange(ctx context.Context) {
 			f.currentEpoch = epoch
 			digest := *f.getForkForEpoch(epoch)
 
+			fmt.Printf("current digest: %s, new: %s \n", f.currentForkDigest.String(), digest.String())
 			if digest != f.currentForkDigest {
 				f.lock.Lock()
+				log.Info("switching fork digest", "fork", digest.String(), "epoch", epoch)
+
 				f.currentForkDigest = digest
 				f.lock.Unlock()
 			}
@@ -65,14 +70,21 @@ func (f *ForkChoice) monitorForkChange(ctx context.Context) {
 
 func (f *ForkChoice) getForkForEpoch(epoch int64) *common.ForkDigest {
 	digest := new(common.ForkDigest)
-	if f.currentEpoch >= f.ForkConfig.Altair.ForkEpoch && f.ForkConfig.Altair.Supported {
-		digest.UnmarshalText([]byte(f.ForkConfig.Altair.ForkDigest))
-	} else if f.currentEpoch >= f.ForkConfig.Bellatrix.ForkEpoch && f.ForkConfig.Bellatrix.Supported {
-		digest.UnmarshalText([]byte(f.ForkConfig.Bellatrix.ForkDigest))
+
+	// fmt.Printf("epoch: %d\n", epoch)
+	// fmt.Printf("capellaEpoch: %d supported: %v\n", f.ForkConfig.Capella.ForkEpoch, f.ForkConfig.Capella.Supported)
+	// fmt.Printf("denebEpoch: %d supported: %v\n", f.ForkConfig.Deneb.ForkEpoch, f.ForkConfig.Deneb.Supported)
+
+	if f.currentEpoch >= f.ForkConfig.Deneb.ForkEpoch && f.ForkConfig.Deneb.Supported {
+		digest.UnmarshalText([]byte(f.ForkConfig.Deneb.ForkDigest))
 	} else if f.currentEpoch >= f.ForkConfig.Capella.ForkEpoch && f.ForkConfig.Capella.Supported {
 		digest.UnmarshalText([]byte(f.ForkConfig.Capella.ForkDigest))
-	} else if f.currentEpoch >= f.ForkConfig.Deneb.ForkEpoch && f.ForkConfig.Deneb.Supported {
-		digest.UnmarshalText([]byte(f.ForkConfig.Deneb.ForkDigest))
+	} else if f.currentEpoch >= f.ForkConfig.Bellatrix.ForkEpoch && f.ForkConfig.Bellatrix.Supported {
+		digest.UnmarshalText([]byte(f.ForkConfig.Bellatrix.ForkDigest))
+	} else if f.currentEpoch >= f.ForkConfig.Altair.ForkEpoch && f.ForkConfig.Altair.Supported {
+		digest.UnmarshalText([]byte(f.ForkConfig.Altair.ForkDigest))
 	}
+	// fmt.Printf("Epoch: %d, Digest: %s\n", epoch, digest.String())
+
 	return digest
 }

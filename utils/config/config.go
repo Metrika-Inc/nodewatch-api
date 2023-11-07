@@ -29,6 +29,12 @@ type Configuration struct {
 	Crawler    *Crawler    `yaml:"crawler,omitempty"`
 	Kafka      *Kafka      `yaml:"kafka,omitempty"`
 	Fork       *Fork       `yaml:"fork,omitempty"`
+	Network    *Network    `yaml:"network,omitempty"`
+}
+
+type Network struct {
+	Name      string   `yaml:"name,omitempty"`
+	Bootnodes []string `yaml:"bootnodes,omitempty"`
 }
 
 type Crawler struct {
