@@ -33,9 +33,9 @@ func Start(ctx context.Context, wg *sync.WaitGroup, config *config.Configuration
 	case "mainnet":
 		bootNodes = params.V5Bootnodes
 	case "goerli":
-		bootNodes = params.GoerliBootnodes
+		bootNodes = params.V5Bootnodes
 	case "sepolia":
-		bootNodes = params.SepoliaBootnodes
+		bootNodes = params.V5Bootnodes
 	case "custom":
 		bootNodes = config.Network.Bootnodes
 	default:

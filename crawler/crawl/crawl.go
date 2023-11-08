@@ -140,6 +140,7 @@ func (c *crawler) start(ctx context.Context) {
 	for {
 		select {
 		case n := <-c.nodeCh:
+			fmt.Println(n)
 			c.storePeer(ctx, n)
 		case <-doneCh:
 			// crawling finished
@@ -162,6 +163,7 @@ func (c *crawler) runIterator(ctx context.Context, doneCh chan enode.Iterator, i
 }
 
 func (c *crawler) storePeer(ctx context.Context, node *enode.Node) {
+
 	// only consider the node having tcp port exported
 	if node.TCP() == 0 {
 		return
@@ -171,6 +173,9 @@ func (c *crawler) storePeer(ctx context.Context, node *enode.Node) {
 	if err != nil { // not eth2 nodes
 		return
 	}
+
+	// fork := c.fockChoice.Fork()
+	// fmt.Printf("%s | %s | %v \n", eth2Data.ForkDigest.String(), fork.String(), eth2Data.ForkDigest == fork)
 
 	if eth2Data.ForkDigest == c.fockChoice.Fork() {
 		log.Debug("found a eth2 node", log.Ctx{"node": node})
