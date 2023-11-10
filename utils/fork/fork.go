@@ -1,0 +1,94 @@
+package fork
+
+import (
+	"context"
+	clock "eth2-crawler/utils/clock"
+	config "eth2-crawler/utils/config"
+	"fmt"
+	"sync"
+	"time"
+
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/protolambda/zrnt/eth2/beacon/common"
+)
+
+type ForkChoice struct {
+	lock       sync.RWMutex
+	Clock      *clock.Clock
+	ForkConfig *config.Fork
+
+	// Internal epoch state
+	currentEpoch      int64
+	currentForkDigest common.ForkDigest
+}
+
+func NewForkChoice(ctx context.Context, clock *clock.Clock, forkConfig *config.Fork) *ForkChoice {
+	f := &ForkChoice{
+		Clock:      clock,
+		ForkConfig: forkConfig,
+	}
+
+	f.Start(ctx)
+
+	return f
+}
+
+func (f *ForkChoice) Fork() common.ForkDigest {
+	f.lock.RLock()
+	defer f.lock.RUnlock()
+
+	return f.currentForkDigest
+}
+
+func (f *ForkChoice) Start(ctx context.Context) {
+	currentSlot := f.Clock.CurrentSlot(time.Now().Unix())
+	f.currentEpoch = f.Clock.EpochForSlot(currentSlot)
+	f.currentForkDigest = *f.getForkForEpoch(f.currentEpoch)
+
+	go f.monitorForkChange(ctx)
+}
+
+func (f *ForkChoice) monitorForkChange(ctx context.Context) {
+
+	go func() {
+		epochCh := f.Clock.TickEpochs(ctx)
+		for epoch := range epochCh {
+			f.currentEpoch = epoch
+			digest := *f.getForkForEpoch(epoch)
+
+			fmt.Printf("current digest: %s, new: %s \n", f.currentForkDigest.String(), digest.String())
+			if digest != f.currentForkDigest {
+				f.lock.Lock()
+				log.Info("switching fork digest", "fork", digest.String(), "epoch", epoch)
+
+				f.currentForkDigest = digest
+				f.lock.Unlock()
+			}
+		}
+	}()
+}
+
+func (f *ForkChoice) getForkForEpoch(epoch int64) *common.ForkDigest {
+	digest := new(common.ForkDigest)
+
+	// fmt.Printf("epoch: %d\n", epoch)
+	// fmt.Printf("capellaEpoch: %d supported: %v, digest: %s\n", f.ForkConfig.Capella.ForkEpoch, f.ForkConfig.Capella.Supported, f.ForkConfig.Capella.ForkDigest)
+	// fmt.Printf("denebEpoch: %d supported: %v\n", f.ForkConfig.Deneb.ForkEpoch, f.ForkConfig.Deneb.Supported)
+
+	if f.currentEpoch >= f.ForkConfig.Deneb.ForkEpoch && f.ForkConfig.Deneb.Supported {
+		fmt.Println("Setting denb digest")
+		digest.UnmarshalText([]byte(f.ForkConfig.Deneb.ForkDigest))
+	} else if f.currentEpoch >= f.ForkConfig.Capella.ForkEpoch && f.ForkConfig.Capella.Supported {
+		fmt.Println("Setting capella digest")
+		digest.UnmarshalText([]byte(f.ForkConfig.Capella.ForkDigest))
+	} else if f.currentEpoch >= f.ForkConfig.Bellatrix.ForkEpoch && f.ForkConfig.Bellatrix.Supported {
+		fmt.Println("Setting bellatrix digest")
+		digest.UnmarshalText([]byte(f.ForkConfig.Bellatrix.ForkDigest))
+	} else if f.currentEpoch >= f.ForkConfig.Altair.ForkEpoch && f.ForkConfig.Altair.Supported {
+		fmt.Println("Setting altair digest")
+		digest.UnmarshalText([]byte(f.ForkConfig.Altair.ForkDigest))
+	}
+	fmt.Printf("Epoch: %d, Digest: %s\n", epoch, digest.String())
+
+	return digest
+}

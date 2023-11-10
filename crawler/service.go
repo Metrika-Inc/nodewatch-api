@@ -15,12 +15,11 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/log"
-
 	"github.com/ethereum/go-ethereum/params"
 )
 
 // Start starts the crawler service
-func Start(ctx context.Context, wg *sync.WaitGroup, config *config.Crawler, peerStore peerstore.Provider, historyStore record.Provider, ipResolver ipResolver.Provider, fileOutput *output.Output) {
+func Start(ctx context.Context, wg *sync.WaitGroup, config *config.Configuration, peerStore peerstore.Provider, historyStore record.Provider, ipResolver ipResolver.Provider, fileOutput *output.Output) {
 	h := log.CallerFileHandler(log.StdoutHandler)
 	log.Root().SetHandler(h)
 
@@ -29,7 +28,21 @@ func Start(ctx context.Context, wg *sync.WaitGroup, config *config.Crawler, peer
 	)
 	log.Root().SetHandler(handler)
 
-	err := crawl.Initialize(ctx, wg, config, peerStore, historyStore, ipResolver, params.V5Bootnodes, fileOutput)
+	bootNodes := []string{}
+	switch config.Network.Name {
+	case "mainnet":
+		bootNodes = params.V5Bootnodes
+	case "goerli":
+		bootNodes = params.V5Bootnodes
+	case "sepolia":
+		bootNodes = params.V5Bootnodes
+	case "custom":
+		bootNodes = config.Network.Bootnodes
+	default:
+		panic("invalid network name, must be one of mainnet, goerli, sepolia, custom")
+	}
+
+	err := crawl.Initialize(ctx, wg, config, peerStore, historyStore, ipResolver, bootNodes, fileOutput)
 	if err != nil {
 		panic(err)
 	}
