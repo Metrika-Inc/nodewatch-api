@@ -174,9 +174,6 @@ func (c *crawler) storePeer(ctx context.Context, node *enode.Node) {
 		return
 	}
 
-	// fork := c.fockChoice.Fork()
-	// fmt.Printf("%s | %s | %v \n", eth2Data.ForkDigest.String(), fork.String(), eth2Data.ForkDigest == fork)
-
 	if eth2Data.ForkDigest == c.fockChoice.Fork() {
 		log.Debug("found a eth2 node", log.Ctx{"node": node})
 		// get basic info

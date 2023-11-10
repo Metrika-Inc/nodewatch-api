@@ -72,19 +72,6 @@ func main() {
 
 	go crawler.Start(ctx, &wg, cfg, peerStore, historyStore, resolverService, fOutput)
 
-	// srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: graph.NewResolver(peerStore, historyStore)}))
-
-	// router := http.NewServeMux()
-	// // TODO: make playground accessible only in Dev mode
-	// router.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	// router.Handle("/query", srv)
-	// // TODO: setup proper status handler
-	// router.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
-	// 	fmt.Fprintf(w, "{ \"status\": \"up\" }")
-	// })
-
-	// server.Start(ctx, cfg.Server, router)
-
 	// Block until terminate called
 	<-exit
 	fmt.Println("=====================================")
