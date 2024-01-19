@@ -3,7 +3,7 @@ package fork
 import (
 	"context"
 	clock "eth2-crawler/utils/clock"
-	config "eth2-crawler/utils/config"
+	"eth2-crawler/utils/config"
 	"fmt"
 	"sync"
 	"time"
@@ -71,7 +71,7 @@ func (f *ForkChoice) monitorForkChange(ctx context.Context) {
 func (f *ForkChoice) getForkForEpoch(epoch int64) *common.ForkDigest {
 	digest := new(common.ForkDigest)
 
-	// fmt.Printf("epoch: %d\n", epoch)
+	// fmt.Printf("current epoch: %d\n", epoch)
 	// fmt.Printf("capellaEpoch: %d supported: %v, digest: %s\n", f.ForkConfig.Capella.ForkEpoch, f.ForkConfig.Capella.Supported, f.ForkConfig.Capella.ForkDigest)
 	// fmt.Printf("denebEpoch: %d supported: %v\n", f.ForkConfig.Deneb.ForkEpoch, f.ForkConfig.Deneb.Supported)
 

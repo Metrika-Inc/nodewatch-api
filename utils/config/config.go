@@ -9,6 +9,7 @@ import (
 	"errors"
 	"eth2-crawler/cmd/network"
 	"fmt"
+	"math"
 	"os"
 	"strings"
 	"time"
@@ -18,6 +19,13 @@ import (
 	"github.com/protolambda/zrnt/eth2/configs"
 	"github.com/protolambda/ztyp/tree"
 	"gopkg.in/yaml.v2"
+)
+
+const (
+	MAINNET_ALTAIR_FORK_EPOCH    = 74240
+	MAINNET_BELLATRIX_FORK_EPOCH = 144896
+	MAINNET_CAPELLA_FORK_EPOCH   = 194048
+	MAINNET_DENEB_FORK_EPOCH     = math.MaxInt64
 )
 
 const KafkaDefaultTimeout = 10 * time.Second
@@ -163,6 +171,13 @@ func loadForkDefaults(cfg *Configuration) error {
 	switch cfg.Network.Name {
 	case "mainnet":
 		cfg.Crawler.ForkDecoder = beacon.NewForkDecoder(configs.Mainnet, treeRoot)
+
+		// config doesn't contain the fork epochs, add them manually
+		configs.Mainnet.ALTAIR_FORK_EPOCH = MAINNET_ALTAIR_FORK_EPOCH
+		configs.Mainnet.BELLATRIX_FORK_EPOCH = MAINNET_BELLATRIX_FORK_EPOCH
+		configs.Mainnet.CAPELLA_FORK_EPOCH = MAINNET_CAPELLA_FORK_EPOCH
+		configs.Mainnet.DENEB_FORK_EPOCH = MAINNET_DENEB_FORK_EPOCH
+
 	case "goerli":
 		cfg.Crawler.ForkDecoder = beacon.NewForkDecoder(network.Goerli, treeRoot)
 

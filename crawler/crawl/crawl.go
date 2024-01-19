@@ -140,7 +140,7 @@ func (c *crawler) start(ctx context.Context) {
 	for {
 		select {
 		case n := <-c.nodeCh:
-			fmt.Println(n)
+			// fmt.Println(n)
 			c.storePeer(ctx, n)
 		case <-doneCh:
 			// crawling finished
@@ -175,7 +175,7 @@ func (c *crawler) storePeer(ctx context.Context, node *enode.Node) {
 	}
 
 	if eth2Data.ForkDigest == c.fockChoice.Fork() {
-		log.Debug("found a eth2 node", log.Ctx{"node": node})
+		log.Info("found a eth2 node", log.Ctx{"node": node})
 		// get basic info
 		peer, err := models.NewPeer(node, eth2Data)
 		if err != nil {

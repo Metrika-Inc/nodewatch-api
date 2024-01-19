@@ -22,12 +22,25 @@ fileOutput:
   path: "./crawler.out"
 
 crawler:
-  concurrency: 1
-  connection_retries: 8
-  update_freq_min: 12
+  concurrency: 5
+  connection_retries: 5
+  update_freq_min: 5
   genesis_validators_root: "4b363db94e286120d76eb905340fdd4e54bfe9f06bf33ff6cf5ad27f511bfe95"
-  fork_digest: "0xbba4da96"
-kafka:
-  topic: "slurp_ext_eth_mainnet_nodewatch_api_network_crawler"
-  bootstrap_servers: "kafka:9092"
-  timeout: 10s
+  genesis_time: 1606824023
+  seconds_per_slot: 12
+  slots_per_epoch: 32
+
+# Leave digest blank for automatic generation (must have correct genesis validators root)
+fork:
+  altair:
+    supported: false
+  bellatrix:
+    supported: false
+  capella:
+    supported: true
+  deneb:
+    supported: true
+
+network:
+  # mainnet | goerli | sepolia | custom
+  name: mainnet
