@@ -177,15 +177,15 @@ func loadForkDefaults(cfg *Configuration) error {
 		configs.Mainnet.BELLATRIX_FORK_EPOCH = MAINNET_BELLATRIX_FORK_EPOCH
 		configs.Mainnet.CAPELLA_FORK_EPOCH = MAINNET_CAPELLA_FORK_EPOCH
 		configs.Mainnet.DENEB_FORK_EPOCH = MAINNET_DENEB_FORK_EPOCH
-
+		log.Info("Using mainnet fork decoder")
 	case "goerli":
 		cfg.Crawler.ForkDecoder = beacon.NewForkDecoder(network.Goerli, treeRoot)
-
-		fmt.Println("Using goerli fork decoder")
-		fmt.Println(cfg.Crawler.ForkDecoder.Capella.String())
-
+		log.Info("Using goerli fork decoder")
+	case "holesky":
+		cfg.Crawler.ForkDecoder = beacon.NewForkDecoder(network.Holesky, treeRoot)
+		log.Info("Using holesky fork decoder")
 	default:
-		log.Warn("no network specified, using configured epochs and fork digests")
+		log.Info("no network specified, using configured epochs and fork digests")
 	}
 
 	// Populate the fork digest if not set but supported
