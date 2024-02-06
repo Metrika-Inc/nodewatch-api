@@ -43,7 +43,8 @@ fork:
     fork_epoch: 2
 
 network:
-  # mainnet | goerli | sepolia | custom
+  # mainnet | goerli | goerli | custom
   name: custom
+  # bootnodes not required for anything other than custom
   bootnodes:
    - enr:-MK4QO5iZFGSJ7GWH5134c7rPTdr8SiRMo3qZf3Fc-la_c0WE5IukP5oGacgX95MhQVWsGFKGRw20EIgVAI0vKErD-WGAYunD270h2F0dG5ldHOIAAAAAAAAAACEZXRoMpCMkQYoIAAAkgIAAAAAAAAAgmlkgnY0gmlwhKwaAAOJc2VjcDI1NmsxoQIWRkMsnAg2N9f72TdyxMbYlSa7Ly-O2Yvswp6F2ZqsdYhzeW5jbmV0cwCDdGNwgjLIg3VkcIIu4A
