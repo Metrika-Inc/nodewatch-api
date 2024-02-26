@@ -33,7 +33,7 @@ jobs:
           make test
 
   lint:
-    name: Lint & License Check
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-go@v3
@@ -43,5 +43,5 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
-          version: v1.48
+          version: v4.0.0
           args: --timeout=5m
