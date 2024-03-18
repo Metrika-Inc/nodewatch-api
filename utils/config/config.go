@@ -9,7 +9,6 @@ import (
 	"errors"
 	"eth2-crawler/cmd/network"
 	"fmt"
-	"math"
 	"os"
 	"strings"
 	"time"
@@ -25,7 +24,7 @@ const (
 	MAINNET_ALTAIR_FORK_EPOCH    = 74240
 	MAINNET_BELLATRIX_FORK_EPOCH = 144896
 	MAINNET_CAPELLA_FORK_EPOCH   = 194048
-	MAINNET_DENEB_FORK_EPOCH     = math.MaxInt64
+	MAINNET_DENEB_FORK_EPOCH     = 269568
 )
 
 const KafkaDefaultTimeout = 10 * time.Second
