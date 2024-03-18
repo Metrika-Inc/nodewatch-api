@@ -18,6 +18,7 @@ import (
 	"eth2-crawler/resolver/ipmapper"
 	peerStore "eth2-crawler/store/peerstore/mongo"
 	recordStore "eth2-crawler/store/record/mongo"
+	httpTransport "eth2-crawler/transport/http"
 	"eth2-crawler/utils/config"
 )
 
@@ -70,6 +71,11 @@ func main() {
 		log.Fatalf("error Initializing the file output: %s", err.Error())
 	}
 
+	// Start the http server
+	httpHdlr := httpTransport.NewHttpTransport(cfg.Server)
+	httpHdlr.RegisterRoutes()
+	go httpHdlr.Start(ctx, &wg)
+
 	go crawler.Start(ctx, &wg, cfg, peerStore, historyStore, resolverService, fOutput)
 
 	// Block until terminate called
@@ -83,4 +89,9 @@ func main() {
 
 	// Wait on wg to finish
 	wg.Wait()
+}
+
+func startHttpServer(ctx context.Context, cfg *config.Server) {
+	// Start the http server
+
 }

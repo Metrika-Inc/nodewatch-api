@@ -11,6 +11,7 @@ import (
 	reqresp "eth2-crawler/crawler/rpc/request"
 	"eth2-crawler/crawler/util"
 	"eth2-crawler/graph/model"
+	"eth2-crawler/metrics"
 	"eth2-crawler/models"
 	"eth2-crawler/output"
 	ipResolver "eth2-crawler/resolver"
@@ -176,6 +177,7 @@ func (c *crawler) storePeer(ctx context.Context, node *enode.Node) {
 
 	if eth2Data.ForkDigest == c.fockChoice.Fork() {
 		log.Info("found a eth2 node", log.Ctx{"node": node})
+		metrics.NodeDiscovered.Add(1)
 		// get basic info
 		peer, err := models.NewPeer(node, eth2Data)
 		if err != nil {
@@ -358,6 +360,7 @@ func (c *crawler) collectNodeInfoRetryer(ctx context.Context, peer *models.Peer)
 			// Set the fork digest if it has changed
 			peer.SetForkDigest(status.ForkDigest)
 
+			metrics.NodeInfoCollected.Add(1)
 			log.Info("successfully collected all info", peer.Log())
 			return true
 		}
