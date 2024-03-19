@@ -289,6 +289,7 @@ func (c *crawler) updatePeerInfo(ctx context.Context, peer *models.Peer) {
 	// remove the node if it has bad score
 	if peer.Score <= models.ScoreBad {
 		log.Info("deleting node for bad score", log.Ctx{"peer_id": peer.ID})
+		metrics.NodeRemoved.Inc()
 		err := c.peerStore.Delete(ctx, peer)
 		if err != nil {
 			log.Error("failed on deleting from peerstore", log.Ctx{"err": err})

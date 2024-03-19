@@ -30,4 +30,10 @@ var (
 		Name:      "write_channel_size",
 		Help:      "Gauge tracking the current length of the write channel",
 	})
+
+	NodeRemoved = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "nodewatch-crawler",
+		Name:      "counter_node_removed",
+		Help:      "Counter tracking the raw number of ETH2 node records removed from the crawler DB",
+	})
 )
