@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Metrika-Inc/golibs/health"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -19,15 +18,13 @@ import (
 
 type HTTPTransport struct {
 	*config.Server
-	r               *chi.Mux
-	livenessHandler *health.LivenessHTTPHandler
+	r *chi.Mux
 }
 
 func NewHttpTransport(cfg *config.Server) *HTTPTransport {
 	handler := &HTTPTransport{
-		Server:          cfg,
-		r:               chi.NewRouter(),
-		livenessHandler: &health.LivenessHTTPHandler{},
+		Server: cfg,
+		r:      chi.NewRouter(),
 	}
 
 	handler.r.Use(middleware.Logger)
@@ -40,9 +37,6 @@ func (h *HTTPTransport) RegisterRoutes() {
 
 	// Prometheus
 	h.r.Get("/metrics", promhttp.Handler().ServeHTTP)
-
-	// Healthchecks
-	h.r.Get("/alive", h.livenessHandler.ServeHTTP)
 }
 
 func (h *HTTPTransport) Start(ctx context.Context, wg *sync.WaitGroup) {
