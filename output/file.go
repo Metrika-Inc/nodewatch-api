@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"eth2-crawler/metrics"
 	"os"
 	"sync"
 	"time"
@@ -89,6 +90,7 @@ func (f *Output) Start(ctx context.Context, wg *sync.WaitGroup) {
 			wg.Done()
 			return
 		case item := <-f.workchan:
+			metrics.WriteChannelSize.Dec()
 			outBytes, _ := json.Marshal(item)
 			if _, err := f.fileWriter.Write(append(outBytes, byte('\n'))); err != nil {
 				log.Warn("failed to write to file", log.Ctx{"error": err})
