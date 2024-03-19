@@ -281,6 +281,7 @@ func (c *crawler) updatePeerInfo(ctx context.Context, peer *models.Peer) {
 		uuid := fmt.Sprintf("%x", h.Sum(nil))
 
 		// TODO: Can we do anything here if this is blocking?
+		metrics.WriteChannelSize.Inc()
 		c.fileOutput.WorkChan() <- models.PeerOutput{UUID: uuid, ProcessedTimestamp: time.Now().UTC(), Peer: *peer}
 	} else {
 		peer.Score--
@@ -317,6 +318,8 @@ func (c *crawler) collectNodeInfoRetryer(ctx context.Context, peer *models.Peer)
 
 			err = c.host.Connect(ctx, *peer.GetPeerInfo())
 			if err != nil {
+				metrics.NodeInfoFailed.Add(1)
+
 				switch t := err.(type) {
 				default:
 					log.Error("unknown type %T\n", t)
