@@ -90,8 +90,3 @@ func main() {
 	// Wait on wg to finish
 	wg.Wait()
 }
-
-func startHttpServer(ctx context.Context, cfg *config.Server) {
-	// Start the http server
-
-}
