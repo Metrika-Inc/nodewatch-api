@@ -268,7 +268,7 @@ func (c *crawler) updatePeerInfo(ctx context.Context, peer *models.Peer) {
 		peer.LastConnected = time.Now().Unix()
 
 		// Track
-		metrics.NodeUpdateDelay.Observe(float64(peer.LastUpdated) - float64(peer.LastConnected))
+		metrics.NodeUpdateDelay.Observe(float64(peer.LastConnected) - float64(peer.LastUpdated))
 
 		// update geolocation
 		// if peer.GeoLocation == nil {
