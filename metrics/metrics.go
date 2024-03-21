@@ -16,7 +16,7 @@ var (
 	NodeInfoCollected = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: "nodewatchCrawler",
 		Name:      "counter_info_collected",
-		Help:      "Counter tracking the raw number of ETH2 nodes successfully connected to queried",
+		Help:      "Counter tracking the raw number of ETH2 nodes with successful connections",
 	})
 
 	NodeInfoFailed = promauto.NewCounter(prometheus.CounterOpts{
@@ -35,5 +35,19 @@ var (
 		Namespace: "nodewatchCrawler",
 		Name:      "counter_node_removed",
 		Help:      "Counter tracking the raw number of ETH2 node records removed from the crawler DB",
+	})
+
+	NodeUpdateDelay = promauto.NewHistogram(prometheus.HistogramOpts{
+		Namespace: "nodewatchCrawler",
+		Name:      "node_connection_delay",
+		Help:      "Histogram tracking the delay between adding a node to the jobs queue and successfully establishing a connection",
+		Buckets:   prometheus.LinearBuckets(0, 10, 18),
+	})
+
+	KafkaWriteMessageDelay = promauto.NewHistogram(prometheus.HistogramOpts{
+		Namespace: "nodewatchCrawler",
+		Name:      "kafka_write_message_delay",
+		Help:      "Histogram tracking kafka write latency",
+		Buckets:   prometheus.DefBuckets,
 	})
 )
