@@ -80,9 +80,11 @@ func (f *Output) Start(ctx context.Context, wg *sync.WaitGroup) {
 				kafkaMsgs = append(kafkaMsgs, kafka.Message{Value: outBytes})
 			}
 			if f.kafkaWriter != nil {
+				start := time.Now()
 				if err := f.kafkaWriter.WriteMessages(ctx, kafkaMsgs...); err != nil {
 					log.Warn("failed to write to kafka", log.Ctx{"error": err})
 				}
+				metrics.KafkaWriteMessageDelay.Observe(time.Since(start).Seconds())
 			}
 			f.fileWriter.Flush()
 			f.file.Sync()
@@ -96,9 +98,11 @@ func (f *Output) Start(ctx context.Context, wg *sync.WaitGroup) {
 				log.Warn("failed to write to file", log.Ctx{"error": err})
 			}
 			if f.kafkaWriter != nil {
+				start := time.Now()
 				if err := f.kafkaWriter.WriteMessages(ctx, kafka.Message{Value: outBytes}); err != nil {
 					log.Warn("failed to write to kafka", log.Ctx{"error": err})
 				}
+				metrics.KafkaWriteMessageDelay.Observe(time.Since(start).Seconds())
 			}
 		}
 	}
