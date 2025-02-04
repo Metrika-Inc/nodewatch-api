@@ -27,7 +27,7 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p/p2p/muxer/mplex"
+	mplex "github.com/libp2p/go-libp2p-mplex"
 	"github.com/libp2p/go-libp2p/p2p/net/swarm"
 	noise "github.com/libp2p/go-libp2p/p2p/security/noise"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
@@ -123,7 +123,8 @@ func newHost(ctx context.Context, forkChoice *fork.ForkChoice) (p2p.Host, error)
 		libp2p.UserAgent("Eth2-Crawler"),
 		libp2p.Transport(tcp.NewTCPTransport),
 		libp2p.Security(noise.ID, noise.New),
-		libp2p.ChainOptions(libp2p.DefaultMuxers, libp2p.Muxer(mplex.ID, mplex.DefaultTransport)),
+		libp2p.ChainOptions(libp2p.DefaultMuxers),
+		libp2p.Muxer(mplex.ID, mplex.DefaultTransport),
 		libp2p.NATPortMap(),
 	)
 	if err != nil {
@@ -342,7 +343,7 @@ func (c *crawler) collectNodeInfoRetryer(ctx context.Context, peer *models.Peer)
 
 				switch t := err.(type) {
 				default:
-					log.Error("unknown type %T\n", t)
+					log.Error("unknown", "type:", t)
 				case *swarm.DialError:
 					for _, e := range t.DialErrors {
 						// Bit ugly but failing to negotiate security protocol is a good indicator that the node will never be able to connect

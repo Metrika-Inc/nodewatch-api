@@ -1,7 +1,7 @@
 # Copyright 2021 ChainSafe Systems
 # SPDX-License-Identifier: LGPL-3.0-only
 
-FROM golang:1.20-alpine AS builder
+FROM golang:1.22-alpine AS builder
 
 RUN apk add build-base
 WORKDIR /code
@@ -15,7 +15,7 @@ ADD . .
 RUN env GOOS=linux GOARCH=amd64 go build -o /crawler cmd/main.go
 
 # final stage
-FROM alpine:3.14.0
+FROM alpine:3.20.0
 
 RUN apk add build-base
 ARG env=dev
