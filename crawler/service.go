@@ -12,6 +12,8 @@ import (
 	"eth2-crawler/store/peerstore"
 	"eth2-crawler/store/record"
 	"eth2-crawler/utils/config"
+	"log/slog"
+	"os"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -20,13 +22,18 @@ import (
 
 // Start starts the crawler service
 func Start(ctx context.Context, wg *sync.WaitGroup, config *config.Configuration, peerStore peerstore.Provider, historyStore record.Provider, ipResolver ipResolver.Provider, fileOutput *output.Output) {
-	h := log.CallerFileHandler(log.StdoutHandler)
-	log.Root().SetHandler(h)
+	// h := log.CallerFileHandler(log.StdoutHandler)
+	// log.Root().SetHandler(h)
 
-	handler := log.MultiHandler(
-		log.LvlFilterHandler(log.LvlInfo, h),
-	)
-	log.Root().SetHandler(handler)
+	// handler := log.MultiHandler(
+	// 	log.LvlFilterHandler(log.LvlInfo, h),
+	// )
+	// log.Root().SetHandler(handler)
+
+	h := log.NewLogger(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+	log.SetDefault(h)
 
 	bootNodes := []string{}
 	switch config.Network.Name {

@@ -75,14 +75,16 @@ func (f *Output) Start(ctx context.Context, wg *sync.WaitGroup) {
 			for item := range f.workchan {
 				outBytes, _ := json.Marshal(item)
 				if _, err := f.fileWriter.Write(append(outBytes, byte('\n'))); err != nil {
-					log.Warn("failed to write to file", log.Ctx{"error": err})
+					// log.Warn("failed to write to file", log.Ctx{"error": err})
+					log.Warn("failed to write to file", "error", err)
 				}
 				kafkaMsgs = append(kafkaMsgs, kafka.Message{Value: outBytes})
 			}
 			if f.kafkaWriter != nil {
 				start := time.Now()
 				if err := f.kafkaWriter.WriteMessages(ctx, kafkaMsgs...); err != nil {
-					log.Warn("failed to write to kafka", log.Ctx{"error": err})
+					// log.Warn("failed to write to kafka", log.Ctx{"error": err})
+					log.Warn("failed to write to kafka", "error", err)
 				}
 				metrics.KafkaWriteMessageDelay.Observe(time.Since(start).Seconds())
 			}
@@ -95,12 +97,14 @@ func (f *Output) Start(ctx context.Context, wg *sync.WaitGroup) {
 			metrics.WriteChannelSize.Dec()
 			outBytes, _ := json.Marshal(item)
 			if _, err := f.fileWriter.Write(append(outBytes, byte('\n'))); err != nil {
-				log.Warn("failed to write to file", log.Ctx{"error": err})
+				// log.Warn("failed to write to file", log.Ctx{"error": err})
+				log.Warn("failed to write to file", "error", err)
 			}
 			if f.kafkaWriter != nil {
 				start := time.Now()
 				if err := f.kafkaWriter.WriteMessages(ctx, kafka.Message{Value: outBytes}); err != nil {
-					log.Warn("failed to write to kafka", log.Ctx{"error": err})
+					// log.Warn("failed to write to kafka", log.Ctx{"error": err})
+					log.Warn("failed to write to kafka", "error", err)
 				}
 				metrics.KafkaWriteMessageDelay.Observe(time.Since(start).Seconds())
 			}
@@ -120,7 +124,8 @@ func (f *Output) monitorWorkChan(ctx context.Context, wg *sync.WaitGroup) {
 			wg.Done()
 			return
 		case <-t.C:
-			log.Info("Workchan monitor", log.Ctx{"size": len(f.workchan)})
+			// log.Info("Workchan monitor", log.Ctx{"size": len(f.workchan)})
+			log.Info("Workchan monitor", "size", len(f.workchan))
 		}
 	}
 }

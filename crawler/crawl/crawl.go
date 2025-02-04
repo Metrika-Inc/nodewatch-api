@@ -67,13 +67,15 @@ func newCrawler(ctx context.Context, config *config.Crawler, disc resolver, peer
 
 	host, err := newHost(ctx, forkChoice)
 	if err != nil {
-		log.Error("failed create new host", log.Ctx{"err": err})
+		// log.Error("failed create new host", log.Ctx{"err": err})
+		log.Error("failed create new host", "err", err)
 		panic(101)
 	}
 
 	gs, err := startGossipSub(ctx, host)
 	if err != nil {
-		log.Error("failed start ", log.Ctx{"err": err})
+		// log.Error("failed start ", log.Ctx{"err": err})
+		log.Error("failed start ", "err", err)
 		panic(102)
 	}
 
@@ -97,13 +99,15 @@ func newCrawler(ctx context.Context, config *config.Crawler, disc resolver, peer
 func newHost(ctx context.Context, forkChoice *fork.ForkChoice) (p2p.Host, error) {
 	pkey, err := crypto.GenerateKey()
 	if err != nil {
-		log.Error("failed generate key", log.Ctx{"err": err})
+		// log.Error("failed generate key", log.Ctx{"err": err})
+		log.Error("failed generate key", "err", err)
 		return nil, err
 	}
 
 	cpkey, err := uc.ConvertToInterfacePrivkey(pkey)
 	if err != nil {
-		log.Error("failed convert key", log.Ctx{"err": err})
+		// log.Error("failed convert key", log.Ctx{"err": err})
+		log.Error("failed convert key", "err", err)
 		return nil, err
 	}
 
@@ -123,12 +127,14 @@ func newHost(ctx context.Context, forkChoice *fork.ForkChoice) (p2p.Host, error)
 		libp2p.NATPortMap(),
 	)
 	if err != nil {
-		log.Error("failed create new host", log.Ctx{"err": err})
+		// log.Error("failed create new host", log.Ctx{"err": err})
+		log.Error("failed create new host", "err", err)
 		return nil, err
 	}
 
 	log.Info("---------------")
-	log.Info("host created", log.Ctx{"host": host.ID().String()})
+	// log.Info("host created", log.Ctx{"host": host.ID().String()})
+	log.Info("host created", "host", host.ID().String())
 	log.Info("---------------")
 
 	return host, nil
@@ -176,7 +182,8 @@ func (c *crawler) storePeer(ctx context.Context, node *enode.Node) {
 	}
 
 	if eth2Data.ForkDigest == c.fockChoice.Fork() {
-		log.Info("found a eth2 node", log.Ctx{"node": node})
+		// log.Info("found a eth2 node", log.Ctx{"node": node})
+		log.Info("found a eth2 node", "node", node)
 		metrics.NodeDiscovered.Add(1)
 		// get basic info
 		peer, err := models.NewPeer(node, eth2Data)
@@ -186,7 +193,8 @@ func (c *crawler) storePeer(ctx context.Context, node *enode.Node) {
 		// save to db if not exists
 		err = c.peerStore.Create(ctx, peer)
 		if err != nil {
-			log.Error("err inserting peer", log.Ctx{"err": err, "peer": peer.String()})
+			// log.Error("err inserting peer", log.Ctx{"err": err, "peer": peer.String()})
+			log.Error("err inserting peer", "err", err, "peer", peer.String())
 		}
 	}
 }
@@ -197,7 +205,8 @@ func (c *crawler) updatePeer(ctx context.Context, wg *sync.WaitGroup) {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Error("update peer job context was canceled", log.Ctx{"err": ctx.Err()})
+			// log.Error("update peer job context was canceled", log.Ctx{"err": ctx.Err()})
+			log.Error("update peer job context was canceled", "err", ctx.Err())
 
 			// Wait for the worker pool to finish, then safe to close the write channel
 			bgWorkerWg.Wait()
@@ -216,7 +225,8 @@ func (c *crawler) selectPendingAndExecute(ctx context.Context) {
 	// get peers updated more than config.UpdateFreqMin min ago
 	reqs, err := c.peerStore.ListForJob(ctx, time.Minute*time.Duration(c.crawlerConfig.UpdateFreqMin), c.crawlerConfig.Concurrency)
 	if err != nil {
-		log.Error("error getting list from peerstore", log.Ctx{"err": err})
+		// log.Error("error getting list from peerstore", log.Ctx{"err": err})
+		log.Error("error getting list from peerstore", "err", err)
 		return
 	}
 	for _, req := range reqs {
@@ -226,12 +236,14 @@ func (c *crawler) selectPendingAndExecute(ctx context.Context) {
 		req.LastUpdated = time.Now().Unix()
 		err = c.peerStore.Update(ctx, req)
 		if err != nil {
-			log.Error("error updating request", log.Ctx{"err": err})
+			// log.Error("error updating request", log.Ctx{"err": err})
+			log.Error("error updating request", "err", err)
 			continue
 		}
 		select {
 		case <-ctx.Done():
-			log.Error("update selector stopped", log.Ctx{"err": ctx.Err()})
+			// log.Error("update selector stopped", log.Ctx{"err": ctx.Err()})
+			log.Error("update selector stopped", "err", ctx.Err())
 			return
 		default:
 			c.jobs <- req
@@ -250,7 +262,8 @@ func (c *crawler) bgWorker(ctx context.Context, wg *sync.WaitGroup) {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Error("context canceled", log.Ctx{"err": ctx.Err()})
+			// log.Error("context canceled", log.Ctx{"err": ctx.Err()})
+			log.Error("context canceled", "err", ctx.Err())
 			wg.Done()
 			return
 		case req := <-c.jobs:
@@ -291,17 +304,20 @@ func (c *crawler) updatePeerInfo(ctx context.Context, peer *models.Peer) {
 	}
 	// remove the node if it has bad score
 	if peer.Score <= models.ScoreBad {
-		log.Info("deleting node for bad score", log.Ctx{"peer_id": peer.ID})
+		// log.Info("deleting node for bad score", log.Ctx{"peer_id": peer.ID})
+		log.Info("deleting node for bad score", "peer_id", peer.ID)
 		metrics.NodeRemoved.Inc()
 		err := c.peerStore.Delete(ctx, peer)
 		if err != nil {
-			log.Error("failed on deleting from peerstore", log.Ctx{"err": err})
+			// log.Error("failed on deleting from peerstore", log.Ctx{"err": err})
+			log.Error("failed on deleting from peerstore", "err", err)
 		}
 		return
 	}
 	err := c.peerStore.Update(ctx, peer)
 	if err != nil {
-		log.Error("failed on updating peerstore", log.Ctx{"err": err})
+		// log.Error("failed on updating peerstore", log.Ctx{"err": err})
+		log.Error("failed on updating peerstore", "err", err)
 	}
 }
 
@@ -331,7 +347,8 @@ func (c *crawler) collectNodeInfoRetryer(ctx context.Context, peer *models.Peer)
 					for _, e := range t.DialErrors {
 						// Bit ugly but failing to negotiate security protocol is a good indicator that the node will never be able to connect
 						if strings.HasPrefix(e.Cause.Error(), "failed to negotiate security protocol") {
-							log.Debug("failed to negotiate security protocol, removing from DB", log.Ctx{"peer": peer.ID.String()})
+							// log.Debug("failed to negotiate security protocol, removing from DB", log.Ctx{"peer": peer.ID.String()})
+							log.Debug("failed to negotiate security protocol, removing from DB", "peer", peer.ID.String())
 							peer.Score = models.ScoreBad
 							break
 						}
@@ -344,7 +361,8 @@ func (c *crawler) collectNodeInfoRetryer(ctx context.Context, peer *models.Peer)
 			var status *common.Status
 			status, err = c.host.FetchStatus(c.host.NewStream, ctx, peer, new(reqresp.SnappyCompression))
 			if err != nil || status == nil {
-				log.Debug("Non-success result fetching status", log.Ctx{"err": err})
+				// log.Debug("Non-success result fetching status", log.Ctx{"err": err})
+				log.Debug("Non-success result fetching status", "err", err)
 				continue
 			}
 			ag, err = c.host.GetAgentVersion(peer.ID)
@@ -368,25 +386,32 @@ func (c *crawler) collectNodeInfoRetryer(ctx context.Context, peer *models.Peer)
 			peer.SetForkDigest(status.ForkDigest)
 
 			metrics.NodeInfoCollected.Add(1)
-			log.Info("successfully collected all info", peer.Log())
+			// log.Info("successfully collected all info", peer.Log())
+
+			log.Info("successfully collected all info", "peer", peer.String())
+
 			return true
 		}
 	}
 	// unsuccessful
-	log.Error("failed on retryer", log.Ctx{
-		"attempt": count,
-		"error":   err,
-	})
+	// log.Error("failed on retryer", log.Ctx{
+	// 	"attempt": count,
+	// 	"error":   err,
+	// })
+
+	log.Error("failed on retryer", "attempt", count, "error", err)
+
 	return false
 }
 
 func (c *crawler) updateGeolocation(ctx context.Context, peer *models.Peer) {
 	geoLoc, err := c.ipResolver.GetGeoLocation(ctx, peer.IP)
 	if err != nil {
-		log.Error("unable to get geo information", log.Ctx{
-			"error":   err,
-			"ip_addr": peer.IP,
-		})
+		// log.Error("unable to get geo information", log.Ctx{
+		// 	"error":   err,
+		// 	"ip_addr": peer.IP,
+		// })
+		log.Error("unable to get geo information", "error", err, "ip_addr", peer.IP)
 		return
 	}
 	peer.SetGeoLocation(geoLoc)
@@ -397,12 +422,14 @@ func (c *crawler) insertToHistory() {
 	// get count
 	aggregateData, err := c.peerStore.AggregateBySyncStatus(ctx, &model.PeerFilter{})
 	if err != nil {
-		log.Error("error getting sync status", log.Ctx{"err": err})
+		// log.Error("error getting sync status", log.Ctx{"err": err})
+		log.Error("error getting sync status", "err", err)
 	}
 
 	history := models.NewHistory(aggregateData.Synced, aggregateData.Total)
 	err = c.historyStore.Create(ctx, history)
 	if err != nil {
-		log.Error("error inserting sync status", log.Ctx{"err": err})
+		// log.Error("error inserting sync status", log.Ctx{"err": err})
+		log.Error("error inserting sync status", "err", err)
 	}
 }
