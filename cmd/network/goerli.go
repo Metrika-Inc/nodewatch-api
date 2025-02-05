@@ -15,7 +15,6 @@ var Goerli = &common.Spec{
 		HYSTERESIS_QUOTIENT:              4,
 		HYSTERESIS_DOWNWARD_MULTIPLIER:   1,
 		HYSTERESIS_UPWARD_MULTIPLIER:     5,
-		SAFE_SLOTS_TO_UPDATE_JUSTIFIED:   0,
 		MIN_DEPOSIT_AMOUNT:               1000_000_000,
 		MAX_EFFECTIVE_BALANCE:            32_000_000_000,
 		EFFECTIVE_BALANCE_INCREMENT:      1_000_000_000,
@@ -65,8 +64,9 @@ var Goerli = &common.Spec{
 		MAX_WITHDRAWALS_PER_PAYLOAD:          16,
 	},
 	DenebPreset: common.DenebPreset{
-		FIELD_ELEMENTS_PER_BLOB: 4096,
-		MAX_BLOBS_PER_BLOCK:     4,
+		FIELD_ELEMENTS_PER_BLOB:              4096,
+		MAX_BLOB_COMMITMENTS_PER_BLOCK:       4096,
+		KZG_COMMITMENT_INCLUSION_PROOF_DEPTH: 17,
 	},
 	Config: common.Config{
 		PRESET_BASE:                          "mainnet",
@@ -84,7 +84,7 @@ var Goerli = &common.Spec{
 		DENEB_FORK_EPOCH:                     common.Epoch(500000),
 		TERMINAL_TOTAL_DIFFICULTY:            view.MustUint256("10790000"),
 		TERMINAL_BLOCK_HASH:                  common.Bytes32{},
-		TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH: ^common.Timestamp(0),
+		TERMINAL_BLOCK_HASH_ACTIVATION_EPOCH: ^common.Epoch(0),
 		SECONDS_PER_SLOT:                     12,
 		SECONDS_PER_ETH1_BLOCK:               14,
 		MIN_VALIDATOR_WITHDRAWABILITY_DELAY:  256,

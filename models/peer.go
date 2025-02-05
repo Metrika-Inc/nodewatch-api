@@ -14,7 +14,6 @@ import (
 	"eth2-crawler/crawler/util"
 	"eth2-crawler/utils/crypto"
 
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -340,19 +339,19 @@ func (p *Peer) String() string {
 	}
 }
 
-// Log returns log ctx from peer
-func (p *Peer) Log() log.Ctx {
-	dat, err := json.Marshal(p)
-	if err != nil {
-		return log.Ctx{}
-	}
-	val := log.Ctx{}
-	err = json.Unmarshal(dat, &val)
-	if err != nil {
-		return log.Ctx{}
-	}
-	return val
-}
+// // Log returns log ctx from peer
+// func (p *Peer) Log() log.Ctx {
+// 	dat, err := json.Marshal(p)
+// 	if err != nil {
+// 		return log.Ctx{}
+// 	}
+// 	val := log.Ctx{}
+// 	err = json.Unmarshal(dat, &val)
+// 	if err != nil {
+// 		return log.Ctx{}
+// 	}
+// 	return val
+// }
 
 func (p *Peer) SetForkDigest(digest common.ForkDigest) {
 	p.ForkDigest = digest

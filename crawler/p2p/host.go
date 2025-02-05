@@ -208,15 +208,18 @@ func (c *Client) ServeBeaconPing() {
 		}
 		comp := new(reqresp.SnappyCompression)
 		listenReq := func(ctx context.Context, peerId peer.ID, handler reqresp.ChunkedRequestHandler) {
-			log.Info("Handling ping request", log.Ctx{"peer": peerId.String()})
+			// log.Info("Handling ping request", log.Ctx{"peer": peerId.String()})
+			log.Info("Handling ping request", "peer", peerId.String())
 			var ping common.Ping
 			err := handler.ReadRequest(&ping)
 			if err != nil {
 				_ = handler.WriteErrorChunk(reqresp.InvalidReqCode, "could not parse ping request")
-				log.Trace("failed to read ping request", log.Ctx{"err:": err, "peer": peerId.String()})
+				// log.Trace("failed to read ping request", log.Ctx{"err:": err, "peer": peerId.String()})
+				log.Trace("failed to read ping request", "err", err, "peer", peerId.String())
 			} else {
 				if err := handler.WriteResponseChunk(reqresp.SuccessCode, &ping); err != nil {
-					log.Trace("failed to respond to ping request", log.Ctx{"err:": err})
+					// log.Trace("failed to respond to ping request", log.Ctx{"err:": err})
+					log.Trace("failed to respond to ping request", "err", err)
 				} else {
 					log.Trace("handled ping request")
 				}
@@ -241,15 +244,18 @@ func (c *Client) ServeBeaconStatus() {
 		}
 		comp := new(reqresp.SnappyCompression)
 		listenReq := func(ctx context.Context, peerId peer.ID, handler reqresp.ChunkedRequestHandler) {
-			log.Info("Handling status request", log.Ctx{"peer": peerId.String()})
+			// log.Info("Handling status request", log.Ctx{"peer": peerId.String()})
+			log.Info("Handling status request", "peer", peerId.String())
 			var reqStatus common.Status
 			err := handler.ReadRequest(&reqStatus)
 			if err != nil {
 				_ = handler.WriteErrorChunk(reqresp.InvalidReqCode, "could not parse status request")
-				log.Trace("failed to read status request", log.Ctx{"err:": err, "peer": peerId.String()})
+				// log.Trace("failed to read status request", log.Ctx{"err:": err, "peer": peerId.String()})
+				log.Trace("failed to read status request", "err", err, "peer", peerId.String())
 			} else {
 				if err := handler.WriteResponseChunk(reqresp.SuccessCode, &c.LocalStatus); err != nil {
-					log.Trace("failed to respond to status request", log.Ctx{"err:": err})
+					// log.Trace("failed to respond to status request", log.Ctx{"err:": err})
+					log.Trace("failed to respond to status request", "err", err)
 				} else {
 					// update if possible out status
 					c.UpdateStatus(reqStatus)
@@ -275,15 +281,18 @@ func (c *Client) ServeBeaconMetadata() {
 		}
 		comp := new(reqresp.SnappyCompression)
 		listenReq := func(ctx context.Context, peerId peer.ID, handler reqresp.ChunkedRequestHandler) {
-			log.Info("Handling metadata request", log.Ctx{"peer": peerId.String()})
+			// log.Info("Handling metadata request", log.Ctx{"peer": peerId.String()})
+			log.Info("Handling metadata request", "peer", peerId.String())
 			var reqMetadata common.MetaData
 			err := handler.ReadRequest(&reqMetadata)
 			if err != nil {
 				_ = handler.WriteErrorChunk(reqresp.InvalidReqCode, "could not parse status request")
-				log.Trace("failed to read metadata request", log.Ctx{"err:": err, "peer": peerId.String()})
+				// log.Trace("failed to read metadata request", log.Ctx{"err:": err, "peer": peerId.String()})
+				log.Trace("failed to read metadata request", "err", err, "peer", peerId.String())
 			} else {
 				if err := handler.WriteResponseChunk(reqresp.SuccessCode, &c.LocalMetadata); err != nil {
-					log.Trace("failed to respond to metadata request", log.Ctx{"err:": err})
+					// log.Trace("failed to respond to metadata request", log.Ctx{"err:": err})
+					log.Trace("failed to respond to metadata request", "err", err)
 				} else {
 					log.Trace("handled metadata request")
 				}
