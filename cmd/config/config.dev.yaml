@@ -40,6 +40,8 @@ fork:
     supported: true
   deneb:
     supported: true
+  electra:
+    supported: true
 
 network:
   # mainnet | goerli | sepolia | custom

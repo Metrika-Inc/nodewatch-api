@@ -105,6 +105,7 @@ type Fork struct {
 	Bellatrix ForkConfig `yaml:"bell,omitempty"`
 	Capella   ForkConfig `yaml:"capella,omitempty"`
 	Deneb     ForkConfig `yaml:"deneb,omitempty"`
+	Electra   ForkConfig `yaml:"electra,omitempty"`
 }
 
 func loadDatabaseURI() (string, error) {
@@ -177,6 +178,7 @@ func loadForkDefaults(cfg *Configuration) error {
 		configs.Mainnet.BELLATRIX_FORK_EPOCH = MAINNET_BELLATRIX_FORK_EPOCH
 		configs.Mainnet.CAPELLA_FORK_EPOCH = MAINNET_CAPELLA_FORK_EPOCH
 		configs.Mainnet.DENEB_FORK_EPOCH = MAINNET_DENEB_FORK_EPOCH
+		configs.Mainnet.ELECTRA_FORK_EPOCH = MAINNET_PECTRA_FORK_EPOCH
 		log.Info("Using mainnet fork decoder")
 	case "goerli":
 		cfg.Crawler.ForkDecoder = beacon.NewForkDecoder(network.Goerli, treeRoot)
@@ -206,5 +208,10 @@ func loadForkDefaults(cfg *Configuration) error {
 		cfg.Fork.Deneb.ForkDigest = cfg.Crawler.ForkDecoder.Deneb.String()
 		cfg.Fork.Deneb.ForkEpoch = int64(cfg.Crawler.ForkDecoder.Spec.DENEB_FORK_EPOCH)
 	}
+	if cfg.Fork.Electra.ForkDigest == "" {
+		cfg.Fork.Electra.ForkDigest = cfg.Crawler.ForkDecoder.Electra.String()
+		cfg.Fork.Electra.ForkEpoch = int64(cfg.Crawler.ForkDecoder.Spec.ELECTRA_FORK_EPOCH)
+	}
+
 	return nil
 }
