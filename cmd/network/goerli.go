@@ -68,6 +68,36 @@ var Goerli = &common.Spec{
 		MAX_BLOB_COMMITMENTS_PER_BLOCK:       4096,
 		KZG_COMMITMENT_INCLUSION_PROOF_DEPTH: 17,
 	},
+	ElectraPreset: common.ElectraPreset{
+		// Gwei values
+		MIN_ACTIVATION_BALANCE:        123,
+		MAX_EFFECTIVE_BALANCE_ELECTRA: 456,
+
+		// State list lengths
+		PENDING_DEPOSITS_LIMIT:            0,
+		PENDING_PARTIAL_WITHDRAWALS_LIMIT: 0,
+		PENDING_CONSOLIDATIONS_LIMIT:      0,
+
+		// Reward and penalty quotients
+		MIN_SLASHING_PENALTY_QUOTIENT_ELECTRA: 0,
+		WHISTLEBLOWER_REWARD_QUOTIENT_ELECTRA: 0,
+
+		// Max operations per block
+		MAX_ATTESTER_SLASHINGS_ELECTRA:         0,
+		MAX_ATTESTATIONS_ELECTRA:               0,
+		MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD: 0,
+
+		// Execution
+		MAX_DEPOSIT_REQUESTS_PER_PAYLOAD:    0,
+		MAX_WITHDRAWAL_REQUESTS_PER_PAYLOAD: 0,
+
+		// Withdrawals processing
+		MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP: 0,
+
+		// Pending deposits processing
+		MAX_PENDING_DEPOSITS_PER_EPOCH: 0,
+	},
+
 	Config: common.Config{
 		PRESET_BASE:                          "mainnet",
 		MIN_GENESIS_ACTIVE_VALIDATOR_COUNT:   1 << 14,

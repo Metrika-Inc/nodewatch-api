@@ -55,7 +55,7 @@ func main() {
 	// 	log.Fatalf("error Initializing the ip resolver: %s", err.Error())
 	// }
 
-	fOutputChan := make(chan interface{}, cfg.Crawler.Concurrency)
+	fOutputChan := make(chan any, cfg.Crawler.Concurrency)
 
 	var kafkaConfig *output.KafkaConfig
 	if cfg.Kafka != nil {

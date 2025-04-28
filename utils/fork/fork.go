@@ -72,7 +72,10 @@ func (f *ForkChoice) getForkForEpoch(epoch int64) *common.ForkDigest {
 	digest := new(common.ForkDigest)
 	name := ""
 
-	if f.currentEpoch >= f.ForkConfig.Deneb.ForkEpoch && f.ForkConfig.Deneb.Supported {
+	if f.currentEpoch >= f.ForkConfig.Electra.ForkEpoch && f.ForkConfig.Electra.Supported {
+		name = "electra"
+		digest.UnmarshalText([]byte(f.ForkConfig.Electra.ForkDigest))
+	} else if f.currentEpoch >= f.ForkConfig.Deneb.ForkEpoch && f.ForkConfig.Deneb.Supported {
 		name = "denab"
 		digest.UnmarshalText([]byte(f.ForkConfig.Deneb.ForkDigest))
 	} else if f.currentEpoch >= f.ForkConfig.Capella.ForkEpoch && f.ForkConfig.Capella.Supported {
